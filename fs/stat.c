@@ -49,10 +49,12 @@ int vfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
 	if (inode->i_op->getattr)
 		return inode->i_op->getattr(mnt, dentry, stat);
 
+	//从inode中获取文件信息,将其填充到stat中
 	generic_fillattr(inode, stat);
 	if (!stat->blksize) {
 		struct super_block *s = inode->i_sb;
 		unsigned blocks;
+		//以blocksize对齐
 		blocks = (stat->size+s->s_blocksize-1) >> s->s_blocksize_bits;
 		stat->blocks = (s->s_blocksize / 512) * blocks;
 		stat->blksize = s->s_blocksize;
@@ -87,6 +89,7 @@ int vfs_lstat_fd(int dfd, char __user *name, struct kstat *stat)
 	struct nameidata nd;
 	int error;
 
+	//nd中保存了文件信息
 	error = __user_walk_fd(dfd, name, 0, &nd);
 	if (!error) {
 		error = vfs_getattr(nd.mnt, nd.dentry, stat);

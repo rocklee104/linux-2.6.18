@@ -1427,6 +1427,7 @@ access:
 int fastcall __user_walk_fd(int dfd, const char __user *name, unsigned flags,
 			    struct nameidata *nd)
 {
+	//从用户空间获取文件名
 	char *tmp = getname(name);
 	int err = PTR_ERR(tmp);
 

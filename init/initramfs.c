@@ -127,8 +127,11 @@ static __initdata enum state {
 	Reset
 } state, next_state;
 
+//initrd在内存中的起始地址
 static __initdata char *victim;
+//initrd区间的总长度
 static __initdata unsigned count;
+//this_header记录单个文件的头部,next_header记录下个文件的头部
 static __initdata loff_t this_header, next_header;
 
 static __initdata int dry_run;
@@ -162,6 +165,7 @@ static __initdata char *header_buf, *symlink_buf, *name_buf;
 
 static int __init do_start(void)
 {
+	//实际作用是将collect指针移动到打包的cpio每一个文件头处
 	read_into(header_buf, 110, GotHeader);
 	return 0;
 }
@@ -180,6 +184,7 @@ static int __init do_collect(void)
 	return 0;
 }
 
+//解析cpio 110字节的头部
 static int __init do_header(void)
 {
 	if (memcmp(collected, "070701", 6)) {
@@ -188,6 +193,7 @@ static int __init do_header(void)
 	}
 	parse_header(collected);
 	next_header = this_header + N_ALIGN(name_len) + body_len;
+	//四字节对齐
 	next_header = (next_header + 3) & ~3;
 	if (dry_run) {
 		read_into(name_buf, N_ALIGN(name_len), GotName);
@@ -259,12 +265,14 @@ static int __init do_name(void)
 {
 	state = SkipIt;
 	next_state = Reset;
+	//判断是不是cpio文件的结尾
 	if (strcmp(collected, "TRAILER!!!") == 0) {
 		free_hash();
 		return 0;
 	}
 	if (dry_run)
 		return 0;
+	//将原有路径中的文件删除
 	clean_path(collected, mode);
 	if (S_ISREG(mode)) {
 		int ml = maybe_link();
@@ -277,6 +285,7 @@ static int __init do_name(void)
 			if (wfd >= 0) {
 				sys_fchown(wfd, uid, gid);
 				sys_fchmod(wfd, mode);
+				//这一步就将initrd中的内容copy到了rootfs中
 				state = CopyFile;
 			}
 		}
@@ -453,6 +462,8 @@ static char * __init unpack_to_rootfs(char *buf, unsigned len, int check_only)
 	message = NULL;
 	while (!message && len) {
 		loff_t saved_offset = this_header;
+		//如果开头以字符'0'开始,说明这是cpio格式的ram disk,不用解压直接用复制
+		//cpio的头是以字符串"070701"开头的
 		if (*buf == '0' && !(this_header & 3)) {
 			state = Start;
 			written = write_buffer(buf, len);

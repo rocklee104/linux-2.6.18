@@ -57,6 +57,7 @@ static void push_rest(const char *name)
 
 	tmp_ofs = name_len + 110;
 	while (tmp_ofs & 3) {
+	//ÓÃ2½øÖÆ0Ìî³ä
 		putchar(0);
 		offset++;
 		tmp_ofs++;
