@@ -22,6 +22,7 @@
 #define __NFDBITS	(8 * sizeof(unsigned long))
 
 #undef __FD_SETSIZE
+//fdset中最多有多少个fd
 #define __FD_SETSIZE	1024
 
 #undef __FDSET_LONGS

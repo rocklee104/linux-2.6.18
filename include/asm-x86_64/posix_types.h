@@ -48,8 +48,11 @@ typedef unsigned long	__kernel_old_dev_t;
 #undef __FD_SET
 static __inline__ void __FD_SET(unsigned long fd, __kernel_fd_set *fdsetp)
 {
+	//第几个unsigned long
 	unsigned long _tmp = fd / __NFDBITS;
+	//具体哪一位
 	unsigned long _rem = fd % __NFDBITS;
+	//将指定的那一位置1
 	fdsetp->fds_bits[_tmp] |= (1UL<<_rem);
 }
 

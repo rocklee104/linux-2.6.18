@@ -10159,6 +10159,8 @@ main:
 	.string	"__sighandler_t"
 .LASF471:
 	.string	"pageset"
+.LASF778:
+	.string	"/home/rocklee/code/linux-2.6.18"
 .LASF277:
 	.string	"num_exentries"
 .LASF591:
@@ -10233,8 +10235,6 @@ main:
 	.string	"module_param_attrs"
 .LASF418:
 	.string	"_band"
-.LASF778:
-	.string	"/home/rocklee/linux-2.6.18"
 .LASF494:
 	.string	"pglist_data"
 .LASF14:

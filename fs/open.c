@@ -989,7 +989,9 @@ int get_unused_fd(void)
 	spin_lock(&files->file_lock);
 
 repeat:
+	//获取files的fdtable
 	fdt = files_fdtable(files);
+	//在位图偏移next_fd的位置开始找第一个为0的bit
  	fd = find_next_zero_bit(fdt->open_fds->fds_bits,
 				fdt->max_fdset,
 				files->next_fd);
@@ -998,10 +1000,12 @@ repeat:
 	 * N.B. For clone tasks sharing a files structure, this test
 	 * will limit the total number of files that can be opened.
 	 */
+	 //检查是否超过当前进程限定的最大可打开文件数 
 	if (fd >= current->signal->rlim[RLIMIT_NOFILE].rlim_cur)
 		goto out;
 
 	/* Do we need to expand the fd array or fd set?  */
+	//error < 0错误
 	error = expand_files(files, fd);
 	if (error < 0)
 		goto out;
@@ -1084,6 +1088,7 @@ long do_sys_open(int dfd, const char __user *filename, int flags, int mode)
 	int fd = PTR_ERR(tmp);
 
 	if (!IS_ERR(tmp)) {
+		//找到一个未使用的fd
 		fd = get_unused_fd();
 		if (fd >= 0) {
 			struct file *f = do_filp_open(dfd, tmp, flags, mode);

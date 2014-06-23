@@ -3,7 +3,7 @@
 /*
  * Automatically generated C config: don't edit
  * Linux kernel version: 2.6.18
- * Wed Jun 18 21:20:07 2014
+ * Thu Jun 19 10:13:43 2014
  */
 /* ld script to make x86-64 Linux kernel
  * Written by Martin Mares <mj@atrey.karlin.mff.cuni.cz>;

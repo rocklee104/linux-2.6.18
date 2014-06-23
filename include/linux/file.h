@@ -32,12 +32,17 @@ struct embedded_fd_set {
 #define EMBEDDED_FD_SET_SIZE (BITS_PER_BYTE * sizeof(struct embedded_fd_set))
 
 struct fdtable {
+	//可以打开的最大文件数
 	unsigned int max_fds;
+	//位图的最大长度
 	int max_fdset;
-	//这是一个指针数组, 长度由max_fds决定
+	//这是一个指针数组, 长度由max_fds决定,每一个数组项指向一个file结构实例
+	//管理一个打开文件的所有信息,指向files_struct的fd_array  
 	struct file ** fd;      /* current fd array */
+	//指向位域的指针, 该位域保存了所有在exec系统调用时需要关闭的文件描述符信息
 	fd_set *close_on_exec;
-	//open_fds指向的bit位最大数目由max_fdset决定
+	//open_fds指向的bit位最大数目由max_fdset决定,指向位域的指针,该位域保存所有打开文件的描述符
+	//每个可能的文件描述符都对应一个比特位,如果比特位为1, 表示文件正在使用中.否则未使用
 	fd_set *open_fds;
 	struct rcu_head rcu;
 	struct files_struct *free_files;
@@ -51,6 +56,7 @@ struct files_struct {
   /*
    * read mostly part
    */
+   //引用计数
 	atomic_t count;
 	struct fdtable *fdt;
 	struct fdtable fdtab;
@@ -58,6 +64,7 @@ struct files_struct {
    * written part on a separate cache line in SMP
    */
 	spinlock_t file_lock ____cacheline_aligned_in_smp;
+   //下一个可用的fd  
 	int next_fd;
 	//embedded_fd_set是位图,close_on_exec_init记录执行exec需要关闭的文件描述符
 	struct embedded_fd_set close_on_exec_init;

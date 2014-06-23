@@ -712,6 +712,7 @@ struct file {
 	struct vfsmount         *f_vfsmnt;
 	//文件操作调用的各个函数
 	const struct file_operations	*f_op;
+	//访问本文件的的进程数目的计数器  
 	atomic_t		f_count;
 	//open系统调用时传递的额外标志
 	unsigned int 		f_flags;
