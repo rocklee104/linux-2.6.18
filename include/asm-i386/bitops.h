@@ -376,7 +376,8 @@ static inline unsigned long ffz(unsigned long word)
 static inline int ffs(int x)
 {
 	int r;
-
+	
+	//bit scan forward, 从低位向高位扫描
 	__asm__("bsfl %1,%0\n\t"
 		"jnz 1f\n\t"
 		"movl $-1,%0\n"
@@ -393,8 +394,10 @@ static inline int ffs(int x)
 static inline int fls(int x)
 {
 	int r;
-
+	
+	//bit scan reverse, 从高位向低位扫描
 	__asm__("bsrl %1,%0\n\t"
+		//结果不为0, 即zf = 0就跳转
 		"jnz 1f\n\t"
 		"movl $-1,%0\n"
 		"1:" : "=r" (r) : "rm" (x));

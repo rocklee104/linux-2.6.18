@@ -162,6 +162,7 @@ static inline int __attribute_pure__ long_log2(unsigned long x)
 	return r;
 }
 
+//将x向上增加至为2的n次幂
 static inline unsigned long
 __attribute_const__ roundup_pow_of_two(unsigned long x)
 {

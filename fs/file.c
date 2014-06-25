@@ -175,6 +175,7 @@ static void copy_fdtable(struct fdtable *nfdt, struct fdtable *fdt)
 	BUG_ON(nfdt->max_fds < fdt->max_fds);
 	/* Copy the existing tables and install the new pointers */
 
+	//位图所占的字节数
 	i = fdt->max_fdset / (sizeof(unsigned long) * 8);
 	count = (nfdt->max_fdset - fdt->max_fdset) / 8;
 
@@ -183,10 +184,12 @@ static void copy_fdtable(struct fdtable *nfdt, struct fdtable *fdt)
 	 * not yet initialised.
 	 */
 	if (i) {
+		//copy位图
 		memcpy (nfdt->open_fds, fdt->open_fds,
 						fdt->max_fdset/8);
 		memcpy (nfdt->close_on_exec, fdt->close_on_exec,
 						fdt->max_fdset/8);
+		//将超出的部分全部置0
 		memset (&nfdt->open_fds->fds_bits[i], 0, count);
 		memset (&nfdt->close_on_exec->fds_bits[i], 0, count);
 	}
@@ -194,9 +197,11 @@ static void copy_fdtable(struct fdtable *nfdt, struct fdtable *fdt)
 	/* Don't copy/clear the array if we are creating a new
 	   fd array for fork() */
 	if (fdt->max_fds) {
+		//copy file 数组
 		memcpy(nfdt->fd, fdt->fd,
 			fdt->max_fds * sizeof(struct file *));
 		/* clear the remainder of the array */
+		//超出的部分清0
 		memset(&nfdt->fd[fdt->max_fds], 0,
 		       (nfdt->max_fds - fdt->max_fds) *
 					sizeof(struct file *));
@@ -210,6 +215,7 @@ static void copy_fdtable(struct fdtable *nfdt, struct fdtable *fdt)
 fd_set * alloc_fdset(int num)
 {
 	fd_set *new_fdset;
+	//bit转化为字节
 	int size = num / 8;
 
 	if (size <= PAGE_SIZE)
@@ -233,6 +239,7 @@ static struct fdtable *alloc_fdtable(int nr)
 {
 	struct fdtable *fdt = NULL;
 	int nfds = 0;
+	//fd_set的数组,fd_set占128字节,一共1024位
   	fd_set *new_openset = NULL, *new_execset = NULL;
 	struct file **new_fds;
 
@@ -240,10 +247,13 @@ static struct fdtable *alloc_fdtable(int nr)
 	if (!fdt)
   		goto out;
 
+	//L1_CACHE_BYTES 在64位机上是128,8 * L1_CACHE_BYTES == 1024,而fd不能超过1024
+	//故这段代码没什么意义
 	nfds = max_t(int, 8 * L1_CACHE_BYTES, roundup_pow_of_two(nr + 1));
 	if (nfds > NR_OPEN)
 		nfds = NR_OPEN;
 
+	//指针的大小刚好是一个fd_set
   	new_openset = alloc_fdset(nfds);
   	new_execset = alloc_fdset(nfds);
   	if (!new_openset || !new_execset)
@@ -343,6 +353,7 @@ int expand_files(struct files_struct *files, int nr)
 	int err, expand = 0;
 	struct fdtable *fdt;
 
+	//通过进程的打开文件列表获得文件描述符位图结构
 	fdt = files_fdtable(files);
 	if (nr >= fdt->max_fdset || nr >= fdt->max_fds) {
 		if (fdt->max_fdset >= NR_OPEN ||

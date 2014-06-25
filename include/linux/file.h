@@ -32,12 +32,11 @@ struct embedded_fd_set {
 #define EMBEDDED_FD_SET_SIZE (BITS_PER_BYTE * sizeof(struct embedded_fd_set))
 
 struct fdtable {
-	//可以打开的最大文件数
+	//当前文件对象的最大数, 通常max_fds比max_fdset小
 	unsigned int max_fds;
-	//位图的最大长度
+	//文件描述符的最大数,在git bbea9f 中被干掉了
 	int max_fdset;
-	//这是一个指针数组, 长度由max_fds决定,每一个数组项指向一个file结构实例
-	//管理一个打开文件的所有信息,指向files_struct的fd_array  
+	//管理一个打开文件的所有信息,指向files_struct的fd_array,数组长度由max_fds决定 
 	struct file ** fd;      /* current fd array */
 	//指向位域的指针, 该位域保存了所有在exec系统调用时需要关闭的文件描述符信息
 	fd_set *close_on_exec;

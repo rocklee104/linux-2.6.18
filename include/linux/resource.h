@@ -40,7 +40,9 @@ struct	rusage {
 };
 
 struct rlimit {
+	//软限制
 	unsigned long	rlim_cur;
+	//硬限制
 	unsigned long	rlim_max;
 };
 
