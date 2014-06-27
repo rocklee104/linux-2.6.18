@@ -746,6 +746,7 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
 	memcpy(dname, name->name, name->len);
 	dname[name->len] = 0;
 
+	//把 dentry 的使用计数初始化为1
 	atomic_set(&dentry->d_count, 1);
 	//这时候还没加入hash表
 	dentry->d_flags = DCACHE_UNHASHED;
@@ -765,6 +766,7 @@ struct dentry *d_alloc(struct dentry * parent, const struct qstr *name)
 	INIT_LIST_HEAD(&dentry->d_alias);
 
 	if (parent) {
+		//dget是为了防止父目录在该 dentry 删除前被删除
 		dentry->d_parent = dget(parent);
 		dentry->d_sb = parent->d_sb;
 	} else {

@@ -879,6 +879,7 @@ static struct file *do_filp_open(int dfd, const char *filename, int flags,
 	struct nameidata nd;
 
 	namei_flags = flags;
+	//参数列表中的open_flag的低两位的含义和该函数内部的flag变量中的是不同的
 	if ((namei_flags+1) & O_ACCMODE)
 		namei_flags++;
 

@@ -34,7 +34,12 @@
 #include <linux/namei.h>
 #include <asm/namei.h>
 #include <asm/uaccess.h>
-
+/*
+"\000\004\002\006" defines array of 4 bytes/chars, we can replace it with:
+char array[4] = {0, 4, 2, 6};
+x&3 means - get only far right 2 bits in integer, basically it is equivalent of x%4
+so, this macro do: array[ x % 4 ] - takes proper value based on index
+*/
 #define ACC_MODE(x) ("\000\004\002\006"[(x)&O_ACCMODE])
 
 /* [Feb-1997 T. Schoebel-Theuer]
@@ -384,6 +389,7 @@ void release_open_intent(struct nameidata *nd)
  */
 static struct dentry * cached_lookup(struct dentry * parent, struct qstr * name, struct nameidata *nd)
 {
+	//在散列中找出以parent作为父目录项 , 名称为name的目录项 
 	struct dentry * dentry = __d_lookup(parent, name);
 
 	/* lockess __d_lookup may fail due to concurrent d_move() 
@@ -392,6 +398,7 @@ static struct dentry * cached_lookup(struct dentry * parent, struct qstr * name,
 	if (!dentry)
 		dentry = d_lookup(parent, name);
 
+	//验证获取的dentry是否有效
 	if (dentry && dentry->d_op && dentry->d_op->d_revalidate) {
 		if (!dentry->d_op->d_revalidate(dentry, nd) && !d_invalidate(dentry)) {
 			dput(dentry);
@@ -870,7 +877,6 @@ fail:
  * Returns 0 and nd will have valid dentry and mnt on success.
  * Returns error and drops reference to input namei data on failure.
  */
- //这里假设name为/usr/bin/vim
  //nd最初保存的是root的信息
 static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 {
@@ -903,7 +909,6 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 			err = vfs_permission(nd, MAY_EXEC);
  		if (err)
 			break;
-		//this.name = "usr/bin/vim"
 		this.name = name;
 		//c仅用于计算hash
 		c = *(const unsigned char *)name;
@@ -916,7 +921,6 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 			hash = partial_name_hash(c, hash);
 			c = *(const unsigned char *)name;
 		} while (c && (c != '/'));
-		//name = "/bin/vim", this.name = "usr/bin/vim"
 		//this.len就是usr的长度,为3
 		this.len = name - (const char *) this.name;
 		//获取返回的hash
@@ -1274,6 +1278,7 @@ static int __path_lookup_intent_open(int dfd, const char *name,
 		unsigned int lookup_flags, struct nameidata *nd,
 		int open_flags, int create_mode)
 {
+	//get_empty_filp有些看不懂
 	struct file *filp = get_empty_filp();
 	int err;
 
@@ -1367,11 +1372,14 @@ static struct dentry * __lookup_hash(struct qstr *name, struct dentry * base, st
 	}
 
 	dentry = cached_lookup(base, name, nd);
+	//如果没有找到base的子目录/文件,就需要创建
 	if (!dentry) {
 		struct dentry *new = d_alloc(base, name);
 		dentry = ERR_PTR(-ENOMEM);
+		//如果d_alloc失败
 		if (!new)
 			goto out;
+		//lookup把dentry加入hash表中,返回null表示成功
 		dentry = inode->i_op->lookup(inode, new, nd);
 		if (!dentry)
 			dentry = new;
@@ -1530,6 +1538,7 @@ static inline int may_create(struct inode *dir, struct dentry *child,
 /* 
  * O_DIRECTORY translates into forcing a directory lookup.
  */
+ //将用户标志转为内核标志
 static inline int lookup_flags(unsigned int f)
 {
 	unsigned long retval = LOOKUP_FOLLOW;
@@ -1745,12 +1754,19 @@ int open_namei(int dfd, const char *pathname, int flag,
 	 * will not do.
 	 */
 	error = -EISDIR;
+	//如果最后一个分量是./,../直接返回
+	
+	//如果文件名是目录，那么文件名的最后一个字符是斜杠符“/”，而普通文件的最后一个字符
+	//不可能是斜杠符，因此目录文件的长度比nd指示的文件名长度多出来一个字符，通过检查最后
+	//一个字符是否为空判断文件是否是目录
 	if (nd->last_type != LAST_NORM || nd->last.name[nd->last.len])
 		goto exit;
 
+	//在父dentry里面查找是否有nd->last名字的文件，没有则创建dentry对象
 	dir = nd->dentry;
 	nd->flags &= ~LOOKUP_PARENT;
 	mutex_lock(&dir->d_inode->i_mutex);
+	//通过nd在hash表中获取dentry
 	path.dentry = lookup_hash(nd);
 	path.mnt = nd->mnt;
 
@@ -1761,6 +1777,7 @@ do_last:
 		goto exit;
 	}
 
+	// 检查nd->intent.open.file是否合法, 这是最终要返回的文件指针
 	if (IS_ERR(nd->intent.open.file)) {
 		mutex_unlock(&dir->d_inode->i_mutex);
 		error = PTR_ERR(nd->intent.open.file);
@@ -1768,9 +1785,11 @@ do_last:
 	}
 
 	/* Negative dentry, just create the file */
+	//文件不存在,需要创建
 	if (!path.dentry->d_inode) {
 		if (!IS_POSIXACL(dir->d_inode))
 			mode &= ~current->fs->umask;
+		//创建一个文件
 		error = vfs_create(dir->d_inode, path.dentry, mode, nd);
 		mutex_unlock(&dir->d_inode->i_mutex);
 		dput(nd->dentry);
@@ -1802,11 +1821,15 @@ do_last:
 	error = -ENOENT;
 	if (!path.dentry->d_inode)
 		goto exit_dput;
+
+	//是否是一个符号链接
 	if (path.dentry->d_inode->i_op && path.dentry->d_inode->i_op->follow_link)
 		goto do_link;
 
 	path_to_nameidata(&path, nd);
 	error = -EISDIR;
+
+	//是否是目录
 	if (path.dentry->d_inode && S_ISDIR(path.dentry->d_inode->i_mode))
 		goto exit;
 ok:
