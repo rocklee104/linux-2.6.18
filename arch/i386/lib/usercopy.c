@@ -26,20 +26,37 @@ static inline int __movsl_is_ok(unsigned long a1, unsigned long a2, unsigned lon
 /*
  * Copy a null terminated string from userspace.
  */
+//test,对两个操作数进行and操作,根据结果设置ZF、SF、PF寄存器
+//jz, 当zf==1时,转移.jnz, 当zf==0时,转移
+//lodsb, load byte from the addr which stored at address DS:(E)SI into AL
+//stosb, 将AL中的数据store到 ES:EDI or ES:DI register指定的地址中
+//"&"约束只能用于Output操作表达式，向GCC表明"GCC不得为任何
+//Input操作表达式分配与此Output操作表达式相同的寄存器"
 
+//"="约束说明当前的操作表达式是Write-Only的，只能用作输出，而不能作为输入
+//"S"约束是寄存器约束,表示要使用寄存器%esi/%si
+//"D"约束是寄存器约束,表示使用%edi/%di;
+
+//内联汇编要访问寄存器的话要使用2个%
 #define __do_strncpy_from_user(dst,src,count,res)			   \
 do {									   \
 	int __d0, __d1, __d2;						   \
 	might_sleep();							   \
 	__asm__ __volatile__(						   \
+		//如果count == 0, zf = 1;
 		"	testl %1,%1\n"					   \
+		//如果zf == 1, jump到2
 		"	jz 2f\n"					   \
+		//lodsb是将src指向的字符串中的字符加载到寄存器AL中
 		"0:	lodsb\n"					   \
 		"	stosb\n"					   \
 		"	testb %%al,%%al\n"				   \
 		"	jz 1f\n"					   \
+		//count - 1
 		"	decl %1\n"					   \
+		//如果count != 0,继续拷贝
 		"	jnz 0b\n"					   \
+		//res = res - count, 表示拷贝了多少字符
 		"1:	subl %1,%0\n"					   \
 		"2:\n"							   \
 		".section .fixup,\"ax\"\n"				   \
@@ -50,8 +67,11 @@ do {									   \
 		"	.align 4\n"					   \
 		"	.long 0b,3b\n"					   \
 		".previous"						   \
+		//res的初始值和count相同
 		: "=d"(res), "=c"(count), "=&a" (__d0), "=&S" (__d1),	   \
 		  "=&D" (__d2)						   \
+		  //src和__d1使用同样的寄存器约束,src的地址会用%esi寄存器来存储
+		  //dst和__d2使用同样的寄存器约束,dst的地址会用%edi寄存器来存储
 		: "i"(-EFAULT), "0"(count), "1"(count), "3"(src), "4"(dst) \
 		: "memory");						   \
 } while (0)
@@ -76,6 +96,8 @@ do {									   \
  * If @count is smaller than the length of the string, copies @count bytes
  * and returns @count.
  */
+ //kernel层和user层交互数据的时候不能直接用strcpy,应该先把内存中的数据copy到
+ //寄存器中,再从寄存器中copy到内存中
 long
 __strncpy_from_user(char *dst, const char __user *src, long count)
 {
