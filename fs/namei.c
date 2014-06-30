@@ -887,7 +887,7 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 	
 	while (*name=='/')
 		name++;
-	//name为usr/bin/vim
+
 	if (!*name)
 		goto return_reval;
 
@@ -921,7 +921,7 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 			hash = partial_name_hash(c, hash);
 			c = *(const unsigned char *)name;
 		} while (c && (c != '/'));
-		//this.len就是usr的长度,为3
+
 		this.len = name - (const char *) this.name;
 		//获取返回的hash
 		this.hash = end_name_hash(hash);
@@ -1038,7 +1038,7 @@ last_component:
 				goto return_err;
 			inode = nd->dentry->d_inode;
 		} else
-		//切换到下一分量
+		//获取最后一个分量
 			path_to_nameidata(&next, nd);
 		err = -ENOENT;
 		if (!inode)
@@ -1052,6 +1052,7 @@ last_component:
 		}
 		goto return_base;
 lookup_parent:
+		//nd保留最后一个分量的父目录的信息
 		nd->last = this;
 		nd->last_type = LAST_NORM;
 		if (this.name[0] != '.')
@@ -1379,7 +1380,7 @@ static struct dentry * __lookup_hash(struct qstr *name, struct dentry * base, st
 		//如果d_alloc失败
 		if (!new)
 			goto out;
-		//lookup把dentry加入hash表中,返回null表示成功
+		//lookup把dentry加入hash表中,返回0表示成功
 		dentry = inode->i_op->lookup(inode, new, nd);
 		if (!dentry)
 			dentry = new;
@@ -1744,6 +1745,7 @@ int open_namei(int dfd, const char *pathname, int flag,
 	/*
 	 * Create - we need to know the parent.
 	 */
+	//创建文件时候,需要查其父目录
 	error = path_lookup_create(dfd,pathname,LOOKUP_PARENT,nd,flag,mode);
 	if (error)
 		return error;
@@ -1756,9 +1758,7 @@ int open_namei(int dfd, const char *pathname, int flag,
 	error = -EISDIR;
 	//如果最后一个分量是./,../直接返回
 	
-	//如果文件名是目录，那么文件名的最后一个字符是斜杠符“/”，而普通文件的最后一个字符
-	//不可能是斜杠符，因此目录文件的长度比nd指示的文件名长度多出来一个字符，通过检查最后
-	//一个字符是否为空判断文件是否是目录
+	//目录文件名的最后一个字符是斜杠符"/"，而普通文件的最后一个字符为'\0'
 	if (nd->last_type != LAST_NORM || nd->last.name[nd->last.len])
 		goto exit;
 
@@ -1766,7 +1766,7 @@ int open_namei(int dfd, const char *pathname, int flag,
 	dir = nd->dentry;
 	nd->flags &= ~LOOKUP_PARENT;
 	mutex_lock(&dir->d_inode->i_mutex);
-	//通过nd在hash表中获取dentry
+	//通过nd在hash表中获取dentry, 如果这个dentry不存在,就会创建.
 	path.dentry = lookup_hash(nd);
 	path.mnt = nd->mnt;
 

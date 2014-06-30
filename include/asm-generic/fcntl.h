@@ -37,6 +37,7 @@
 #define O_DIRECT	00040000	/* direct disk access hint */
 #endif
 #ifndef O_LARGEFILE
+//转化为16进制后是8000
 #define O_LARGEFILE	00100000
 #endif
 #ifndef O_DIRECTORY
