@@ -39,6 +39,14 @@ struct nameidata {
 /*
  * Type of the last component on LOOKUP_PARENT
  */
+/* 
+LAST_NORM：最后一个分量是普通文件名
+LAST_ROOT：最后一个分量是“/”（也就是整个路径名为“/”）
+LAST_DOT：最后一个分量是“.”
+LAST_DOTDOT：最后一个分量是“..”
+LAST_BIND：最后一个分量是链接到特殊文件系统的符号链接
+*/
+
 enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
 
 /*

@@ -1081,6 +1081,7 @@ int locks_mandatory_locked(struct inode *inode)
 	 * Search the lock list for this inode for any POSIX locks.
 	 */
 	lock_kernel();
+	//从索引节点的锁列表中查找是否存在有与其相冲突的锁，即是否已经加上了锁
 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
 		if (!IS_POSIX(fl))
 			continue;
@@ -1088,6 +1089,8 @@ int locks_mandatory_locked(struct inode *inode)
 			break;
 	}
 	unlock_kernel();
+
+	//返回0,表示没有上过锁
 	return fl ? -EAGAIN : 0;
 }
 

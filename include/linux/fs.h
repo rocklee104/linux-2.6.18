@@ -104,6 +104,7 @@ extern int dir_notify_enable;
 #define MS_NOEXEC	 8	/* Disallow program execution */
 #define MS_SYNCHRONOUS	16	/* Writes are synced at once */
 #define MS_REMOUNT	32	/* Alter flags of a mounted FS */
+//允许在文件上执行强制锁
 #define MS_MANDLOCK	64	/* Allow mandatory locks on an FS */
 #define MS_DIRSYNC	128	/* Directory modifications are synchronous */
 #define MS_NOATIME	1024	/* Do not update access times. */
@@ -757,6 +758,7 @@ extern spinlock_t files_lock;
 #define MAX_LFS_FILESIZE 	0x7fffffffffffffffUL
 #endif
 
+//FL_POSIX锁 
 #define FL_POSIX	1
 #define FL_FLOCK	2
 #define FL_ACCESS	8	/* not trying to lock, just looking */
@@ -1154,6 +1156,7 @@ struct file_operations {
 };
 
 struct inode_operations {
+	//inode是父目录的inode, dentry是创建目标的dentry, int接的是mode, nd是父目录的nd
 	int (*create) (struct inode *,struct dentry *,int, struct nameidata *);
 	//lookup根据inode和nameidata查找对应的dentry,如果存在这个函数,表示inode表示一个目录
 	struct dentry * (*lookup) (struct inode *,struct dentry *, struct nameidata *);
@@ -1471,6 +1474,8 @@ extern int locks_mandatory_area(int, struct inode *, struct file *, loff_t, size
 
 static inline int locks_verify_locked(struct inode *inode)
 {
+   //文件所在的设备的super_block结构中的s_flags必须被置为 1,文件的 SGID 被置为1 
+   //而且同组可执行位被清0,才允许加强制锁
 	if (MANDATORY_LOCK(inode))
 		return locks_mandatory_locked(inode);
 	return 0;

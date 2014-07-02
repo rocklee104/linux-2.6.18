@@ -246,6 +246,7 @@ int permission(struct inode *inode, int mask, struct nameidata *nd)
 		/*
 		 * Nobody gets write access to a read-only fs.
 		 */
+		 //imply that char & block device etc, can be written
 		if (IS_RDONLY(inode) &&
 		    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)))
 			return -EROFS;
@@ -262,6 +263,7 @@ int permission(struct inode *inode, int mask, struct nameidata *nd)
 	 * MAY_EXEC on regular files requires special handling: We override
 	 * filesystem execute permissions if the mode bits aren't set.
 	 */
+	 //文件的可执行权限需要特殊处理,当前函数只处理目录
 	if ((mask & MAY_EXEC) && S_ISREG(mode) && !(mode & S_IXUGO))
 		return -EACCES;
 
@@ -331,9 +333,11 @@ int get_write_access(struct inode * inode)
 {
 	spin_lock(&inode->i_lock);
 	if (atomic_read(&inode->i_writecount) < 0) {
+		// vm_area_structs with VM_DENYWRITE set exist
 		spin_unlock(&inode->i_lock);
 		return -ETXTBSY;
 	}
+	
 	atomic_inc(&inode->i_writecount);
 	spin_unlock(&inode->i_lock);
 
@@ -1529,10 +1533,14 @@ static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
 static inline int may_create(struct inode *dir, struct dentry *child,
 			     struct nameidata *nd)
 {
+	//child的d_inode目前还没创建,不应该存在
 	if (child->d_inode)
 		return -EEXIST;
+
+	/* dir 不应该是 removed, but still open directory */
 	if (IS_DEADDIR(dir))
 		return -ENOENT;
+	
 	return permission(dir,MAY_WRITE | MAY_EXEC, nd);
 }
 
@@ -1597,22 +1605,34 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
 	}
 }
 
+/**
+ * @dir: 父目录的inode
+ * @dentry: 需要创建成员的dentry
+ * @nd: 父目录的nd
+ */
 int vfs_create(struct inode *dir, struct dentry *dentry, int mode,
 		struct nameidata *nd)
 {
+	//检查权限,判断是否能创建文件
 	int error = may_create(dir, dentry, nd);
 
 	if (error)
 		return error;
 
+	//如果底层文件系统没有实现inode创建的方法,就退出
 	if (!dir->i_op || !dir->i_op->create)
 		return -EACCES;	/* shouldn't it be ENOSYS? */
+
+	//mode只取权限相关的位,即低12位
 	mode &= S_IALLUGO;
+	//创建普通文件
 	mode |= S_IFREG;
 	error = security_inode_create(dir, dentry, mode);
 	if (error)
 		return error;
 	DQUOT_INIT(dir);
+	
+	//调用底层文件系统的inode创建函数
 	error = dir->i_op->create(dir, dentry, mode, nd);
 	if (!error)
 		fsnotify_create(dir, dentry);
@@ -1627,7 +1647,7 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 
 	if (!inode)
 		return -ENOENT;
-
+	//在__link_path_walk中已经处理掉符号链接了,这里不能出现符号链接
 	if (S_ISLNK(inode->i_mode))
 		return -ELOOP;
 	
@@ -1643,6 +1663,7 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 	 * actually live on the filesystem itself, and as such you
 	 * can write to them even if the filesystem is read-only.
 	 */
+	 //设备文件是不能追加的
 	if (S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
 	    	flag &= ~O_TRUNC;
 	} else if (S_ISBLK(inode->i_mode) || S_ISCHR(inode->i_mode)) {
@@ -1655,6 +1676,7 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 	/*
 	 * An append-only file must be opened in append mode for writing.
 	 */
+	 //如果inode只能用append方式写入,就不能以非append方式和trunc方式写入
 	if (IS_APPEND(inode)) {
 		if  ((flag & FMODE_WRITE) && !(flag & O_APPEND))
 			return -EPERM;
@@ -1664,16 +1686,18 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 
 	/* O_NOATIME can only be set by the owner or superuser */
 	if (flag & O_NOATIME)
+		//CAP_FOWNER标志可以跳过对文件所有者的检查
 		if (current->fsuid != inode->i_uid && !capable(CAP_FOWNER))
 			return -EPERM;
 
 	/*
 	 * Ensure there are no outstanding leases on the file.
 	 */
+	// 检查是否有其他进程在使用该文件
 	error = break_lease(inode, flag);
 	if (error)
 		return error;
-
+	
 	if (flag & O_TRUNC) {
 		error = get_write_access(inode);
 		if (error)
@@ -1685,7 +1709,7 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 		error = locks_verify_locked(inode);
 		if (!error) {
 			DQUOT_INIT(inode);
-			
+			//for notify change
 			error = do_truncate(dentry, 0, ATTR_MTIME|ATTR_CTIME, NULL);
 		}
 		put_write_access(inode);
@@ -1734,6 +1758,7 @@ int open_namei(int dfd, const char *pathname, int flag,
 	/*
 	 * The simplest case - just a plain lookup.
 	 */
+	 
 	if (!(flag & O_CREAT)) {
 		error = path_lookup_open(dfd, pathname, lookup_flags(flag),
 					 nd, flag);
@@ -1745,7 +1770,7 @@ int open_namei(int dfd, const char *pathname, int flag,
 	/*
 	 * Create - we need to know the parent.
 	 */
-	//创建文件时候,需要查其父目录
+	//创建文件时候,需要查其父目录, mode在创建的时候才有用,用于设置权限
 	error = path_lookup_create(dfd,pathname,LOOKUP_PARENT,nd,flag,mode);
 	if (error)
 		return error;
@@ -1762,11 +1787,10 @@ int open_namei(int dfd, const char *pathname, int flag,
 	if (nd->last_type != LAST_NORM || nd->last.name[nd->last.len])
 		goto exit;
 
-	//在父dentry里面查找是否有nd->last名字的文件，没有则创建dentry对象
 	dir = nd->dentry;
 	nd->flags &= ~LOOKUP_PARENT;
 	mutex_lock(&dir->d_inode->i_mutex);
-	//通过nd在hash表中获取dentry, 如果这个dentry不存在,就会创建.
+	//通过nd在hash表中获取dentry, 如果这个dentry不存在,就会创建.dentry是nd->last的目录项
 	path.dentry = lookup_hash(nd);
 	path.mnt = nd->mnt;
 
@@ -1788,16 +1812,20 @@ do_last:
 	//文件不存在,需要创建
 	if (!path.dentry->d_inode) {
 		if (!IS_POSIXACL(dir->d_inode))
+			//权限需要减去umask,umask默认022
 			mode &= ~current->fs->umask;
+		
 		//创建一个文件
 		error = vfs_create(dir->d_inode, path.dentry, mode, nd);
 		mutex_unlock(&dir->d_inode->i_mutex);
 		dput(nd->dentry);
+		//这个是最终目标的dentry
 		nd->dentry = path.dentry;
 		if (error)
 			goto exit;
 		/* Don't check for write permission, don't truncate */
 		acc_mode = 0;
+		//刚创建的文件,没有trunc标志
 		flag &= ~O_TRUNC;
 		goto ok;
 	}

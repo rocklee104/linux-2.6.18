@@ -23,6 +23,7 @@ struct dentry;
 struct namespace;
 
 #define MNT_NOSUID	0x01
+//Do not interpret special files on the file system
 #define MNT_NODEV	0x02
 #define MNT_NOEXEC	0x04
 #define MNT_NOATIME	0x08
