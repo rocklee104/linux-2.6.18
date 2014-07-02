@@ -12,6 +12,7 @@
 #ifndef O_CREAT
 #define O_CREAT		00000100	/* not fcntl */
 #endif
+//如果要创建的文件已存在，则返回-1，并且修改errno的值，需要与O_CREAT配对使用以确保文件是新建的。
 #ifndef O_EXCL
 #define O_EXCL		00000200	/* not fcntl */
 #endif

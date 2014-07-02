@@ -337,7 +337,6 @@ int get_write_access(struct inode * inode)
 		spin_unlock(&inode->i_lock);
 		return -ETXTBSY;
 	}
-	
 	atomic_inc(&inode->i_writecount);
 	spin_unlock(&inode->i_lock);
 
@@ -581,7 +580,6 @@ static __always_inline int __vfs_follow_link(struct nameidata *nd, const char *l
 			/* weird __emul_prefix() stuff did it */
 			goto out;
 	}
-	//查找符号链接目标文件
 	res = link_path_walk(link, nd);
 out:
 	if (nd->depth || res || nd->last_type!=LAST_NORM)
@@ -1009,7 +1007,6 @@ last_with_slashes:
 		lookup_flags |= LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
 last_component:
 		/* Clear LOOKUP_CONTINUE iff it was previously unset */
-		//清除LOOKUP_CONTINUE标志
 		nd->flags &= lookup_flags | ~LOOKUP_CONTINUE;
 		if (lookup_flags & LOOKUP_PARENT)
 			goto lookup_parent;
@@ -1030,6 +1027,7 @@ last_component:
 			if (err < 0)
 				break;
 		}
+		
 		//nd保存this前一个分量, next是this的path结构
 		err = do_lookup(nd, &this, &next);
 		if (err)
@@ -1049,6 +1047,7 @@ last_component:
 		// 检查nd->dentry->d_inode是否为NULL, 这发生在没有索引节点与目录项对象关联时，
 		//通常是因为路径名指向一个不存在的文件。在这种情况下，返回一个错误码-ENOENT
 			break;
+		
 		if (lookup_flags & LOOKUP_DIRECTORY) {
 			err = -ENOTDIR; 
 			if (!inode->i_op || !inode->i_op->lookup)
@@ -1056,7 +1055,6 @@ last_component:
 		}
 		goto return_base;
 lookup_parent:
-		//nd保留最后一个分量的父目录的信息
 		nd->last = this;
 		nd->last_type = LAST_NORM;
 		if (this.name[0] != '.')
@@ -1106,8 +1104,8 @@ int fastcall link_path_walk(const char *name, struct nameidata *nd)
 	dget(save.dentry);
 	mntget(save.mnt);
 
-	//从dcache中读取		
 	result = __link_path_walk(name, nd);
+	
 	if (result == -ESTALE) {
 	//如果报错--过于陈旧, 就把标志置为"force a real lookup"
 		*nd = save;
@@ -1208,7 +1206,6 @@ static int fastcall do_path_lookup(int dfd, const char *name,
 	nd->flags = flags;
 	nd->depth = 0;
 
-	//绝对路径
 	if (*name=='/') {
 		read_lock(&current->fs->lock);
 		//如果有chroot
@@ -1293,6 +1290,7 @@ static int __path_lookup_intent_open(int dfd, const char *name,
 	nd->intent.open.flags = open_flags;
 	nd->intent.open.create_mode = create_mode;
 	err = do_path_lookup(dfd, name, lookup_flags|LOOKUP_OPEN, nd);
+
 	if (IS_ERR(nd->intent.open.file)) {
 		if (err == 0) {
 			err = PTR_ERR(nd->intent.open.file);
@@ -1313,7 +1311,7 @@ static int __path_lookup_intent_open(int dfd, const char *name,
  */
 int path_lookup_open(int dfd, const char *name, unsigned int lookup_flags,
 		struct nameidata *nd, int open_flags)
-{
+{	
 	return __path_lookup_intent_open(dfd, name, lookup_flags, nd,
 			open_flags, 0);
 }
@@ -1647,7 +1645,8 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 
 	if (!inode)
 		return -ENOENT;
-	//在__link_path_walk中已经处理掉符号链接了,这里不能出现符号链接
+	//除非open时设置了O_NOFOLLOW, 一般情况在__link_path_walk中已经处理掉符号链接了
+
 	if (S_ISLNK(inode->i_mode))
 		return -ELOOP;
 	
@@ -1762,6 +1761,7 @@ int open_namei(int dfd, const char *pathname, int flag,
 	if (!(flag & O_CREAT)) {
 		error = path_lookup_open(dfd, pathname, lookup_flags(flag),
 					 nd, flag);
+		
 		if (error)
 			return error;
 		goto ok;
@@ -1850,7 +1850,7 @@ do_last:
 	if (!path.dentry->d_inode)
 		goto exit_dput;
 
-	//是否是一个符号链接
+	//open时标记为CREAT, 但是目标已经存在并且是一个符号链接
 	if (path.dentry->d_inode->i_op && path.dentry->d_inode->i_op->follow_link)
 		goto do_link;
 
@@ -1862,6 +1862,7 @@ do_last:
 		goto exit;
 ok:
 	error = may_open(nd, acc_mode, flag);
+	
 	if (error)
 		goto exit;
 	return 0;
@@ -1875,6 +1876,7 @@ exit:
 	return error;
 
 do_link:
+
 	error = -ELOOP;
 	if (flag & O_NOFOLLOW)
 		goto exit_dput;
