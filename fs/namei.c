@@ -912,7 +912,6 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
  		if (err)
 			break;
 		this.name = name;
-		//c仅用于计算hash
 		c = *(const unsigned char *)name;
 
 		//返回hash = 0;
@@ -936,7 +935,6 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 		//最后一个字符为'/'
 		if (!*name)
 			goto last_with_slashes;
-		//name = "bin/vim"
 
 		/*
 		 * "." and ".." are special - ".." especially so because it has
