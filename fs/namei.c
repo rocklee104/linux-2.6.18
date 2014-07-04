@@ -640,8 +640,8 @@ static __always_inline int __do_follow_link(struct path *path, struct nameidata 
 		dget(dentry);
 	}
 	mntget(path->mnt);
-	//调用具体文件系统的follow_link函数, 这个函数会往nd->saved_names[nd->depth]中填入
-	//目标路径
+	//调用具体文件系统的follow_link函数, 
+	//这个函数会往nd->saved_names[nd->depth]中填入目标路径
 	cookie = dentry->d_inode->i_op->follow_link(dentry, nd);
 	error = PTR_ERR(cookie);
 	if (!IS_ERR(cookie)) {
@@ -930,7 +930,7 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 		/* remove trailing slashes? */
 		if (!c)
 			goto last_component;
-		//跳过'/'
+		//处理掉多个'/'
 		while (*++name == '/');
 		//最后一个字符为'/'
 		if (!*name)
@@ -1907,6 +1907,7 @@ do_link:
 	error = -EISDIR;
 	if (nd->last_type != LAST_NORM)
 		goto exit;
+	//last最后一个字符不是'\0'
 	if (nd->last.name[nd->last.len]) {
 		__putname(nd->last.name);
 		goto exit;

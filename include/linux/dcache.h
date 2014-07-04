@@ -144,7 +144,7 @@ enum dentry_d_lock_class
 };
 
 struct dentry_operations {
-	//用于网络文件系统
+	//用于网络文件系统,检查目录项是否有效
 	int (*d_revalidate)(struct dentry *, struct nameidata *);
 	//计算散列值
 	int (*d_hash) (struct dentry *, struct qstr *);
