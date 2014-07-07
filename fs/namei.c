@@ -1913,6 +1913,7 @@ do_link:
 		goto exit;
 	}
 	error = -ELOOP;
+	//函数在do_link->do_last间循环,count的值会增加
 	if (count++==32) {
 		__putname(nd->last.name);
 		goto exit;
