@@ -651,8 +651,8 @@ static __always_inline int __do_follow_link(struct path *path, struct nameidata 
 		if (s)
 			error = __vfs_follow_link(nd, s);
 		if (dentry->d_inode->i_op->put_link)
-			//如果定义了索引节点对象的put_link方法，就执行它，释放由follow_link方法分配的
-			//临时数据结
+			//如果定义了索引节点对象的put_link方法，就执行它，
+			//释放由follow_link方法分配的临时数据结
 			dentry->d_inode->i_op->put_link(dentry, nd, cookie);
 	}
 	dput(dentry);

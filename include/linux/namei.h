@@ -26,7 +26,7 @@ struct nameidata {
 	int		last_type;
 	//符号连接的嵌套级别
 	unsigned	depth;
-	 /* 与嵌套的符号链接关联的路径名数组 */
+	 /* 与嵌套的符号链接关联的路径名数组, + 1是因为saved_names[0]没有用到 */
 	char *saved_names[MAX_NESTED_LINKS + 1];
 
 	/* Intent data */
