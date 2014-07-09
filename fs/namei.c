@@ -894,6 +894,8 @@ static fastcall int __link_path_walk(const char * name, struct nameidata *nd)
 		goto return_reval;
 
 	inode = nd->dentry->d_inode;
+
+	//有符号链接的时候, 其他lookup flag都被清掉
 	if (nd->depth)
 		//符号连接相关,如果depth大于0,表示还有符号链接的嵌套解析没完成
 		lookup_flags = LOOKUP_FOLLOW | (nd->flags & LOOKUP_CONTINUE);
@@ -1872,7 +1874,7 @@ exit:
 		release_open_intent(nd);
 	path_release(nd);
 	return error;
-
+//这里的symbol link没有使用递归,仅使在本函数内跳转
 do_link:
 
 	error = -ELOOP;
