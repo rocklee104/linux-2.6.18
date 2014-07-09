@@ -741,9 +741,10 @@ static int __follow_mount(struct path *path)
 	return res;
 }
 
-//follow_mount()函数检查nd->dentry是否是某文件系统的安装点(nd->dentry->d_mounted的值大于0)
+//follow_mount()函数获取最后一个挂载的文件系统的mnt及dentry
 static void follow_mount(struct vfsmount **mnt, struct dentry **dentry)
 {
+//检查nd->dentry是否是某文件系统的安装点(nd->dentry->d_mounted的值大于0)
 	while (d_mountpoint(*dentry)) {
 		//如果此目录上挂载了多个文件系统
 		//搜索目录项高速缓存中已安装文件系统的根目录
