@@ -872,6 +872,16 @@ cleanup_file:
  * for the internal routines (ie open_namei()/follow_link() etc). 00 is
  * used by symlinks.
  */
+
+/*
+fcntl.h÷–
+O_RDONLY 0
+O_WRONLY 1
+
+fs.h÷–
+FMODE_READ 1
+FMODE_WRITE 2
+*/
 static struct file *do_filp_open(int dfd, const char *filename, int flags,
 				 int mode)
 {

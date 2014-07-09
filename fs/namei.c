@@ -1638,6 +1638,8 @@ int vfs_create(struct inode *dir, struct dentry *dentry, int mode,
 	return error;
 }
 
+//acc_mode 即access mode, 访问模式用于判断读写
+//flag是用户传入的标志
 int may_open(struct nameidata *nd, int acc_mode, int flag)
 {
 	struct dentry *dentry = nd->dentry;
@@ -1663,7 +1665,7 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 	 * actually live on the filesystem itself, and as such you
 	 * can write to them even if the filesystem is read-only.
 	 */
-	 //设备文件是不能追加的
+	 //设备文件内容是不能被清空的
 	if (S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
 	    	flag &= ~O_TRUNC;
 	} else if (S_ISBLK(inode->i_mode) || S_ISCHR(inode->i_mode)) {
@@ -1676,7 +1678,7 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 	/*
 	 * An append-only file must be opened in append mode for writing.
 	 */
-	 //如果inode只能用append方式写入,就不能以非append方式和trunc方式写入
+	//由于flag的低2位在之前的调用中自加1, 故flag的读写都只能用FMODE_READ/FMODE_WRITE
 	if (IS_APPEND(inode)) {
 		if  ((flag & FMODE_WRITE) && !(flag & O_APPEND))
 			return -EPERM;
@@ -1744,6 +1746,7 @@ int open_namei(int dfd, const char *pathname, int flag,
 	struct dentry *dir;
 	int count = 0;
 
+	//access mode
 	acc_mode = ACC_MODE(flag);
 
 	/* O_TRUNC implies we need access checks for write permissions */
