@@ -60,12 +60,21 @@ extern int dir_notify_enable;
 #define MAY_READ 4
 #define MAY_APPEND 8
 
+/*
+* flags in file.f_mode.
+*/
+
+/* file is open for reading */
 #define FMODE_READ 1
+/* file is open for writing */
 #define FMODE_WRITE 2
 
 /* Internal kernel extensions */
+/* file is seekable */
 #define FMODE_LSEEK	4
+/* file can be accessed using pread */
 #define FMODE_PREAD	8
+/* file can be accessed using pwrite */
 #define FMODE_PWRITE	FMODE_PREAD	/* These go hand in hand */
 
 /* File is being opened for execution. Primary users of this flag are

@@ -837,7 +837,7 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
 			goto cleanup_all;
 	}
 
-	//man中指出creation  flags  are  O_CREAT, O_EXCL, O_NOCTTY,
+	//man中指出creation  flags  are  O_CREAT, O_EXCL, O_NOCTTY, O_TRUNC
 	//这里将所有创建标志全部清空
 	f->f_flags &= ~(O_CREAT | O_EXCL | O_NOCTTY | O_TRUNC);
 
@@ -1102,6 +1102,7 @@ void fastcall fd_install(unsigned int fd, struct file * file)
 	spin_lock(&files->file_lock);
 	fdt = files_fdtable(files);
 	BUG_ON(fdt->fd[fd] != NULL);
+	//fd和file关联起来
 	rcu_assign_pointer(fdt->fd[fd], file);
 	spin_unlock(&files->file_lock);
 }
