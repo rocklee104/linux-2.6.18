@@ -803,35 +803,48 @@ static struct file *__dentry_open(struct dentry *dentry, struct vfsmount *mnt,
 	struct inode *inode;
 	int error;
 
+	//系统调用时传入的标志
 	f->f_flags = flags;
 	f->f_mode = ((flags+1) & O_ACCMODE) | FMODE_LSEEK |
 				FMODE_PREAD | FMODE_PWRITE;
 	inode = dentry->d_inode;
+	//如果用户要求写
 	if (f->f_mode & FMODE_WRITE) {
+		//写文件之前要加锁
 		error = get_write_access(inode);
 		if (error)
 			goto cleanup_file;
 	}
 
+	//地址空间对象
 	f->f_mapping = inode->i_mapping;
 	f->f_dentry = dentry;
 	f->f_vfsmnt = mnt;
+	//文件指针位置
 	f->f_pos = 0;
 	f->f_op = fops_get(inode->i_fop);
+	//把file加入sb维护的file链表中去
 	file_move(f, &inode->i_sb->s_files);
 
+	//普通文件open为空
 	if (!open && f->f_op)
+		//使用inode中的i_fop
 		open = f->f_op->open;
+	/*如果是设备文件，需要打开*/  
 	if (open) {
 		error = open(inode, f);
 		if (error)
 			goto cleanup_all;
 	}
 
+	//man中指出creation  flags  are  O_CREAT, O_EXCL, O_NOCTTY,
+	//这里将所有创建标志全部清空
 	f->f_flags &= ~(O_CREAT | O_EXCL | O_NOCTTY | O_TRUNC);
 
+	 /*预读初始化*/
 	file_ra_state_init(&f->f_ra, f->f_mapping->host->i_mapping);
 
+	//NB是注意的意思
 	/* NB: we're sure to have correct a_ops only after f_op->open */
 	if (f->f_flags & O_DIRECT) {
 		if (!f->f_mapping->a_ops ||
@@ -957,8 +970,10 @@ struct file *nameidata_to_filp(struct nameidata *nd, int flags)
 	struct file *filp;
 
 	/* Pick up the filp from the open intent */
+	//获得文件指针
 	filp = nd->intent.open.file;
 	/* Has the filesystem initialised the file for us? */
+	//文件系统是否已经初始化dentry?
 	if (filp->f_dentry == NULL)
 		filp = __dentry_open(nd->dentry, nd->mnt, flags, filp, NULL);
 	else

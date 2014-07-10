@@ -34,6 +34,7 @@
 #ifndef FASYNC
 #define FASYNC		00020000	/* fcntl, for BSD compatibility */
 #endif
+//直接进行文件io,不进行系统缓存
 #ifndef O_DIRECT
 #define O_DIRECT	00040000	/* direct disk access hint */
 #endif

@@ -128,6 +128,7 @@ static __inline__ void atomic_dec(atomic_t *v)
  * returns true if the result is 0, or false for all other
  * cases.
  */ 
+ //对v减1,如果结果为0, 返回真,否则,返回假
 static __inline__ int atomic_dec_and_test(atomic_t *v)
 {
 	unsigned char c;

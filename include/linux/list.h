@@ -70,6 +70,7 @@ static inline void list_add(struct list_head *new, struct list_head *head)
  * Insert a new entry before the specified head.
  * This is useful for implementing queues.
  */
+ //把new加到head->pre和head之间
 static inline void list_add_tail(struct list_head *new, struct list_head *head)
 {
 	__list_add(new, head->prev, head);
@@ -246,6 +247,7 @@ static inline void list_del_init(struct list_head *entry)
  * @list: the entry to move
  * @head: the head that will precede our entry
  */
+ //将list这个entry加到head->pre和head中间,这是头插
 static inline void list_move(struct list_head *list, struct list_head *head)
 {
         __list_del(list->prev, list->next);

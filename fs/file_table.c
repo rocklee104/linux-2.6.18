@@ -244,6 +244,7 @@ void put_filp(struct file *file)
 	}
 }
 
+//把file加入list的链表中
 void file_move(struct file *file, struct list_head *list)
 {
 	if (!list)
