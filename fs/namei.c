@@ -1546,7 +1546,7 @@ static inline int may_create(struct inode *dir, struct dentry *child,
 /* 
  * O_DIRECTORY translates into forcing a directory lookup.
  */
- //将用户标志转为内核标志
+ //根据用户flag转换成lookup flag
 static inline int lookup_flags(unsigned int f)
 {
 	unsigned long retval = LOOKUP_FOLLOW;

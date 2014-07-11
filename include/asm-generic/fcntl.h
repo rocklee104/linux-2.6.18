@@ -42,6 +42,8 @@
 //转化为16进制后是8000
 #define O_LARGEFILE	00100000
 #endif
+
+//如果参数pathname 所指的文件并非为一目录，则会令打开文件失败
 #ifndef O_DIRECTORY
 #define O_DIRECTORY	00200000	/* must be a directory */
 #endif

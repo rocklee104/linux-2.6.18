@@ -329,6 +329,7 @@ static int expand_fdtable(struct files_struct *files, int nr)
 	 */
 	 //这里保证nr不小于 fdt->max_fds和fdt->max_fdset
 	if (nr >= fdt->max_fds || nr >= fdt->max_fdset) {
+		//将旧的fdtable中的数据拷贝到新的fdtable中
 		copy_fdtable(nfdt, fdt);
 	} else {
 		/* Somebody expanded while we dropped file_lock */

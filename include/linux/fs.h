@@ -55,6 +55,7 @@ extern int dir_notify_enable;
 
 #define NR_FILE  8192	/* this can well be larger on a larger system */
 
+//access mode
 #define MAY_EXEC 1
 #define MAY_WRITE 2
 #define MAY_READ 4
