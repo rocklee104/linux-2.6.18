@@ -1709,6 +1709,7 @@ int may_open(struct nameidata *nd, int acc_mode, int flag)
 		 * Refuse to truncate files with mandatory locks held on them.
 		 */
 		error = locks_verify_locked(inode);
+		//没有加文件锁,可以写文件
 		if (!error) {
 			DQUOT_INIT(inode);
 			//for notify change

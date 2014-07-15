@@ -117,7 +117,9 @@
 #endif
 
 struct flock {
+	//指明是共享锁还是排他锁, 可能是F_RDLCK（共享锁）、F_WRLCK（排他锁）和F_UNLCK（删除之前建立的锁）
 	short	l_type;
+	//l_whence 必须是 SEEK_SET、SEEK_CUR 或 SEEK_END 这几个值中的一个
 	short	l_whence;
 	off_t	l_start;
 	off_t	l_len;

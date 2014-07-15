@@ -139,7 +139,9 @@ int lease_break_time = 45;
 #define for_each_lock(inode, lockp) \
 	for (lockp = &inode->i_flock; *lockp != NULL; lockp = &(*lockp)->fl_next)
 
+//文件锁链表的头成员
 static LIST_HEAD(file_lock_list);
+//阻塞列表
 static LIST_HEAD(blocked_list);
 
 static kmem_cache_t *filelock_cache __read_mostly;
@@ -546,6 +548,7 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
 		if (waiter->fl_lmops && waiter->fl_lmops->fl_notify)
 			waiter->fl_lmops->fl_notify(waiter);
 		else
+			//唤醒阻塞的进程
 			wake_up(&waiter->fl_wait);
 	}
 }
@@ -1085,6 +1088,7 @@ int locks_mandatory_locked(struct inode *inode)
 	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
 		if (!IS_POSIX(fl))
 			continue;
+		//如果存在POSIX lock, 并且owner不是当前file_struct,说明存在冲突
 		if (fl->fl_owner != owner)
 			break;
 	}
@@ -1172,12 +1176,14 @@ static void time_out_leases(struct inode *inode)
 	struct file_lock *fl;
 
 	before = &inode->i_flock;
+	//遍历inode上的lease
 	while ((fl = *before) && IS_LEASE(fl) && (fl->fl_type & F_INPROGRESS)) {
 		if ((fl->fl_break_time == 0)
 				|| time_before(jiffies, fl->fl_break_time)) {
 			before = &fl->fl_next;
 			continue;
 		}
+		//找到有效的lease,将阻塞的进程唤醒
 		lease_modify(before, fl->fl_type & ~F_INPROGRESS);
 		if (fl == *before)	/* lease_modify may have freed fl */
 			before = &fl->fl_next;

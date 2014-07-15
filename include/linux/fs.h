@@ -769,8 +769,11 @@ extern spinlock_t files_lock;
 #define MAX_LFS_FILESIZE 	0x7fffffffffffffffUL
 #endif
 
-//FL_POSIX锁 
+//通过fcntl创建的,FL_POSIX一直与一个进程以及一个索引节点相关联,
+//当进程死亡或者文件描述符被关闭的时候，这个锁会被自动释放 
 #define FL_POSIX	1
+//通过flock创建的,FL_FLOCK永远都和一个文件对象相关联,当一个锁被请求或者允许的时候，
+//内核就会把这个进程在同一个文件上的锁都替换掉
 #define FL_FLOCK	2
 #define FL_ACCESS	8	/* not trying to lock, just looking */
 #define FL_EXISTS	16	/* when unlocking, test for existence */
@@ -808,26 +811,40 @@ struct lock_manager_operations {
 #include <linux/nfs_fs_i.h>
 
 struct file_lock {
+	//与索引节点相关的锁列表中下一个元素,表头是file_lock_list
 	struct file_lock *fl_next;	/* singly linked list for this inode  */
+	//指向活跃列表或者被阻塞列表 
 	struct list_head fl_link;	/* doubly linked list of all locks */
+	//指向锁等待列表 
 	struct list_head fl_block;	/* circular list of blocked processes */
+	//锁拥有者的 files_struct 
 	fl_owner_t fl_owner;
+	//进程拥有者的 pid 
 	unsigned int fl_pid;
+	//被阻塞进程的等待队列 
 	wait_queue_head_t fl_wait;
+	//指向文件对象 
 	struct file *fl_file;
 	unsigned char fl_flags;
 	unsigned char fl_type;
+	//被锁区域的开始位移 
 	loff_t fl_start;
+	//被锁区域的结束位移 
 	loff_t fl_end;
 
+	//用于租借暂停通知 
 	struct fasync_struct *	fl_fasync; /* for lease break notifications */
+	//租借的剩余时间 
 	unsigned long fl_break_time;	/* for nonblocking lease breaks */
 
+	//指向文件锁操作 
 	struct file_lock_operations *fl_ops;	/* Callbacks for filesystems */
+	//指向锁管理操作 
 	struct lock_manager_operations *fl_lmops;	/* Callbacks for lockmanagers */
 	union {
 		struct nfs_lock_info	nfs_fl;
 		struct nfs4_lock_info	nfs4_fl;
+	//文件系统特定信息 
 	} fl_u;
 };
 
@@ -1485,8 +1502,8 @@ extern int locks_mandatory_area(int, struct inode *, struct file *, loff_t, size
 
 static inline int locks_verify_locked(struct inode *inode)
 {
-   //文件所在的设备的super_block结构中的s_flags必须被置为 1,文件的 SGID 被置为1 
-   //而且同组可执行位被清0,才允许加强制锁
+   //文件所在的设备的super_block结构中的s_flags必须被置位MS_MANDLOCK,文件的 SGID 被置为1 
+   //而且同组可执行位被清0(这种情况一般是无效的),才允许加强制锁
 	if (MANDATORY_LOCK(inode))
 		return locks_mandatory_locked(inode);
 	return 0;
@@ -1510,6 +1527,7 @@ static inline int locks_verify_truncate(struct inode *inode,
 
 static inline int break_lease(struct inode *inode, unsigned int mode)
 {
+	//所有使用文件锁的进程都会挂在inode->i_flock下
 	if (inode->i_flock)
 		return __break_lease(inode, mode);
 	return 0;
