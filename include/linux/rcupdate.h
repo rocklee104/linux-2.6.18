@@ -227,7 +227,7 @@ extern int rcu_needs_cpu(int cpu);
  * (currently only the Alpha), and, more importantly, documents
  * exactly which pointers are protected by RCU.
  */
-
+//内存栅只在alpha架构上才使用
 #define rcu_dereference(p)     ({ \
 				typeof(p) _________p1 = p; \
 				smp_read_barrier_depends(); \

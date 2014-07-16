@@ -202,6 +202,7 @@ int rw_verify_area(int read_write, struct file *file, loff_t *ppos, size_t count
 		goto Einval;
 
 	inode = file->f_dentry->d_inode;
+	//文件有强制锁
 	if (unlikely(inode->i_flock && MANDATORY_LOCK(inode))) {
 		int retval = locks_mandatory_area(
 			read_write == READ ? FLOCK_VERIFY_READ : FLOCK_VERIFY_WRITE,
@@ -252,6 +253,7 @@ ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 		return -EBADF;
 	if (!file->f_op || (!file->f_op->read && !file->f_op->aio_read))
 		return -EINVAL;
+	//检查用户空间指针是否可用
 	if (unlikely(!access_ok(VERIFY_WRITE, buf, count)))
 		return -EFAULT;
 
@@ -261,8 +263,10 @@ ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 		ret = security_file_permission (file, MAY_READ);
 		if (!ret) {
 			if (file->f_op->read)
+				//调用设备的read函数
 				ret = file->f_op->read(file, buf, count, pos);
 			else
+				//调用块设备的读取方式
 				ret = do_sync_read(file, buf, count, pos);
 			if (ret > 0) {
 				fsnotify_access(file->f_dentry);

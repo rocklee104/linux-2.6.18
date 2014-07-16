@@ -114,6 +114,7 @@ struct file *get_empty_filp(void)
 
 	tsk = current;
 	INIT_LIST_HEAD(&f->f_u.fu_list);
+	//初始化为1
 	atomic_set(&f->f_count, 1);
 	rwlock_init(&f->f_owner.lock);
 	f->f_uid = tsk->fsuid;
@@ -156,6 +157,7 @@ void fastcall __fput(struct file *file)
 	struct vfsmount *mnt = file->f_vfsmnt;
 	struct inode *inode = dentry->d_inode;
 
+	//用于调试,如果sleep就打印回溯信息
 	might_sleep();
 
 	fsnotify_close(file);
@@ -216,12 +218,15 @@ struct file fastcall *fget_light(unsigned int fd, int *fput_needed)
 	struct files_struct *files = current->files;
 
 	*fput_needed = 0;
+	//如果file_struct只有一个进程在使用, 不需要锁
 	if (likely((atomic_read(&files->count) == 1))) {
 		file = fcheck_files(files, fd);
+		//如果有多个进程在使用,就加锁访问
 	} else {
 		rcu_read_lock();
 		file = fcheck_files(files, fd);
 		if (file) {
+			//计数器不为0的时候自加,open过程中f_count初始化为1
 			if (atomic_inc_not_zero(&file->f_count))
 				*fput_needed = 1;
 			else
