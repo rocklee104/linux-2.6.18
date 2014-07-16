@@ -213,6 +213,7 @@ EXPORT_SYMBOL(fget);
  * and a flag is returned to be passed to the corresponding fput_light().
  * There must not be a cloning between an fget_light/fput_light pair.
  */
+ //如果没有其他进程访问fd table,file对象的refcnt就不需要增加
 struct file fastcall *fget_light(unsigned int fd, int *fput_needed)
 {
 	struct file *file;
