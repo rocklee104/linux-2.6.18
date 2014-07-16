@@ -143,6 +143,7 @@ EXPORT_SYMBOL(get_empty_filp);
 void fastcall fput(struct file *file)
 {
 	if (atomic_dec_and_test(&file->f_count))
+		//如果引用计数为0,就释放file对象
 		__fput(file);
 }
 
@@ -218,7 +219,8 @@ struct file fastcall *fget_light(unsigned int fd, int *fput_needed)
 	struct files_struct *files = current->files;
 
 	*fput_needed = 0;
-	//如果file_struct只有一个进程在使用, 不需要锁
+	//如果file_struct只有一个进程在使用, 不需要RCU.
+	//同一个进程多次读取,这里不会自加1
 	if (likely((atomic_read(&files->count) == 1))) {
 		file = fcheck_files(files, fd);
 		//如果有多个进程在使用,就加锁访问

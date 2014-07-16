@@ -266,7 +266,6 @@ ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
 				//调用设备的read函数
 				ret = file->f_op->read(file, buf, count, pos);
 			else
-				//调用块设备的读取方式
 				ret = do_sync_read(file, buf, count, pos);
 			if (ret > 0) {
 				fsnotify_access(file->f_dentry);
