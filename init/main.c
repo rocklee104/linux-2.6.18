@@ -713,6 +713,7 @@ static int init(void * unused)
 	 * Do this before initcalls, because some drivers want to access
 	 * firmware files.
 	 */
+	//解压initramfs到/
 	populate_rootfs();
 
 	do_basic_setup();
@@ -727,6 +728,7 @@ static int init(void * unused)
 
 	//sys_access返回0, 表示执行成功
 	if (sys_access((const char __user *) ramdisk_execute_command, 0) != 0) {
+		//access失败
 		ramdisk_execute_command = NULL;
 		prepare_namespace();
 	}

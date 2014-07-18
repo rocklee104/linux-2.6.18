@@ -83,7 +83,7 @@ static struct super_block *alloc_super(struct file_system_type *type)
 		 */
 		lockdep_set_class(&s->s_lock, &type->s_lock_key);
 		down_write(&s->s_umount);
-		//S_BIAS??why??
+		//只要s_active大于0,s_count就从S_BIAS开始计数
 		s->s_count = S_BIAS;
 		atomic_set(&s->s_active, 1);
 		mutex_init(&s->s_vfs_rename_mutex);

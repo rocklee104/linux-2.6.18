@@ -489,6 +489,12 @@ asmlinkage long sys_utimes(char __user *filename, struct timeval __user *utimes)
  * We do this by temporarily clearing all FS-related capabilities and
  * switching the fsuid/fsgid around to the real ones.
  */
+ #if 0 //在unistd.h中的定义
+ #define R_OK    4       /* Test for read permission.  */
+ #define W_OK    2       /* Test for write permission.  */
+ #define X_OK    1       /* Test for execute permission.  */
+ #define F_OK    0       /* Test for existence.  */
+#endif
 asmlinkage long sys_faccessat(int dfd, const char __user *filename, int mode)
 {
 	struct nameidata nd;
@@ -496,6 +502,7 @@ asmlinkage long sys_faccessat(int dfd, const char __user *filename, int mode)
 	kernel_cap_t old_cap;
 	int res;
 
+	//mode只能在 F_OK, X_OK, W_OK, R_OK中取值
 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
 		return -EINVAL;
 
@@ -520,9 +527,10 @@ asmlinkage long sys_faccessat(int dfd, const char __user *filename, int mode)
 	else
 		current->cap_effective = current->cap_permitted;
 
-	//获取文件的inode,res为0时,表示__user_walk_fd成功
+	//获取文件的nd,res为0时,表示__user_walk_fd成功
 	res = __user_walk_fd(dfd, filename, LOOKUP_FOLLOW|LOOKUP_ACCESS, &nd);
 	if (!res) {
+		//获取到nd后,检查权限
 		res = vfs_permission(&nd, mode);
 		/* SuS v2 requires we report a read only fs too */
 		if(!res && (mode & S_IWOTH) && IS_RDONLY(nd.dentry->d_inode)
