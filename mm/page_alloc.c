@@ -2434,6 +2434,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 		//size = bucketsize * 2 ^ log2qty,也就是求所有backet的总大小
 		size = bucketsize << log2qty;
 		if (flags & HASH_EARLY)
+			//伙伴系统还没启动,只能用alloc_bootmem分配内存
 			table = alloc_bootmem(size);
 		else if (hashdist)
 			table = __vmalloc(size, GFP_ATOMIC, PAGE_KERNEL);
@@ -2441,6 +2442,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 			unsigned long order;
 			for (order = 0; ((1UL << order) << PAGE_SHIFT) < size; order++)
 				;
+			//使用伙伴系统分配内存
 			table = (void*) __get_free_pages(GFP_ATOMIC, order);
 		}
 	} while (!table && size > PAGE_SIZE && --log2qty);

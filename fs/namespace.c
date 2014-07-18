@@ -42,6 +42,7 @@ __cacheline_aligned_in_smp DEFINE_SPINLOCK(vfsmount_lock);
 
 static int event;
 
+//mount_hashtable桶是双向链表
 static struct list_head *mount_hashtable __read_mostly;
 static int hash_mask __read_mostly, hash_bits __read_mostly;
 static kmem_cache_t *mnt_cache __read_mostly;
@@ -1813,9 +1814,11 @@ static void __init init_mount_tree(void)
 	mnt = do_kern_mount("rootfs", 0, "rootfs", NULL);
 	if (IS_ERR(mnt))
 		panic("Can't create rootfs");
+	
 	namespace = kmalloc(sizeof(*namespace), GFP_KERNEL);
 	if (!namespace)
 		panic("Can't allocate initial namespace");
+	
 	atomic_set(&namespace->count, 1);
 	INIT_LIST_HEAD(&namespace->list);
 	init_waitqueue_head(&namespace->poll);
@@ -1850,6 +1853,7 @@ void __init mnt_init(unsigned long mempages)
 	mnt_cache = kmem_cache_create("mnt_cache", sizeof(struct vfsmount),
 			0, SLAB_HWCACHE_ALIGN | SLAB_PANIC, NULL, NULL);
 
+	//mount_hashtable只占用一个页面
 	mount_hashtable = (struct list_head *)__get_free_page(GFP_ATOMIC);
 
 	if (!mount_hashtable)
@@ -1862,6 +1866,7 @@ void __init mnt_init(unsigned long mempages)
 	 */
 	 //一个page可以容纳下nr_hash个list_head, 2的hash_bits方为nr_hash
 	nr_hash = PAGE_SIZE / sizeof(struct list_head);
+
 	hash_bits = 0;
 	do {
 		hash_bits++;

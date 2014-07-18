@@ -911,6 +911,7 @@ static inline struct hlist_head *d_hash(struct dentry *parent,
 {
 	hash += ((unsigned long) parent ^ GOLDEN_RATIO_PRIME) / L1_CACHE_BYTES;
 	hash = hash ^ ((hash ^ GOLDEN_RATIO_PRIME) >> D_HASHBITS);
+	//保证hash值在hashtable中
 	return dentry_hashtable + (hash & D_HASHMASK);
 }
 
@@ -1717,6 +1718,7 @@ static void __init dcache_init_early(void)
 					&d_hash_mask,
 					0);
 
+	//把dentry_hashtable中所有的backet都初始化
 	for (loop = 0; loop < (1 << d_hash_shift); loop++)
 		INIT_HLIST_HEAD(&dentry_hashtable[loop]);
 }
