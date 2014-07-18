@@ -2403,9 +2403,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 		numentries = (flags & HASH_HIGHMEM) ? nr_all_pages : nr_kernel_pages;
 		//一个page 4kb, 下面3行代码就是为了让numentries以mb对齐,其单位是page
 		numentries += (1UL << (20 - PAGE_SHIFT)) - 1;
-		//numentries /= 256
 		numentries >>= 20 - PAGE_SHIFT;
-		//numentries *= 256
 		numentries <<= 20 - PAGE_SHIFT;
 
 		/* limit to 1 bucket per 2^scale bytes of low memory */
@@ -2414,7 +2412,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 		else
 			numentries <<= (PAGE_SHIFT - scale);
 	}
-	//numentries是2的n次幂
+	//numentries是2的n次幂,为了获取_hash_shift
 	numentries = roundup_pow_of_two(numentries);
 
 	/* limit allocation size to 1/16 total memory by default */
@@ -2425,6 +2423,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 		do_div(max, bucketsize);
 	}
 
+	//scale < 4时, 条件成立
 	if (numentries > max)
 		numentries = max;
 
@@ -2432,6 +2431,7 @@ void *__init alloc_large_system_hash(const char *tablename,
 	log2qty = long_log2(numentries);
 
 	do {
+		//size = bucketsize * 2 ^ log2qty,也就是求所有backet的总大小
 		size = bucketsize << log2qty;
 		if (flags & HASH_EARLY)
 			table = alloc_bootmem(size);
