@@ -888,6 +888,7 @@ EXPORT_SYMBOL(copy_to_user);
  * If some data could not be copied, this function will pad the copied
  * data to the requested size using zero bytes.
  */
+ //成功返回0, 否则返回不能拷贝的字节数
 unsigned long
 copy_from_user(void *to, const void __user *from, unsigned long n)
 {

@@ -723,8 +723,10 @@ int follow_up(struct vfsmount **mnt, struct dentry **dentry)
 static int __follow_mount(struct path *path)
 {
 	int res = 0;
+	int flag = 0;
 	//检查刚解析的分量是否指向某个文件系统安装点的一个目录
 	//找出最后一个挂载的
+ 
 	while (d_mountpoint(path->dentry)) {
 		//mouted是path的子vfsmount
 		struct vfsmount *mounted = lookup_mnt(path->mnt, path->dentry);
@@ -735,7 +737,7 @@ static int __follow_mount(struct path *path)
 			mntput(path->mnt);
 		//切换到子vfsmount
 		path->mnt = mounted;
-		path->dentry = dget(mounted->mnt_root);
+		path->dentry = dget(mounted->mnt_root);	
 		res = 1;
 	}
 	return res;

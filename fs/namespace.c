@@ -1083,10 +1083,12 @@ static int do_new_mount(struct nameidata *nd, char *type, int flags,
 {
 	struct vfsmount *mnt;
 
+	//type为空,或者type超过page size
 	if (!type || !memchr(type, 0, PAGE_SIZE))
 		return -EINVAL;
 
 	/* we need capabilities... */
+	//检查进程的权能,只有root能mount,如果将下面的snippet去掉,普通用户也能mount 
 	if (!capable(CAP_SYS_ADMIN))
 		return -EPERM;
 
@@ -1101,6 +1103,7 @@ static int do_new_mount(struct nameidata *nd, char *type, int flags,
  * add a mount into a namespace's mount tree
  * - provide the option of adding the new mount to an expiration list
  */
+ //将安装点挂在目录树上
 int do_add_mount(struct vfsmount *newmnt, struct nameidata *nd,
 		 int mnt_flags, struct list_head *fslist)
 {
@@ -1339,6 +1342,7 @@ static long exact_copy_from_user(void *to, const void __user * from,
 		//user和kernel传递数据时不能用memcpy函数,因为kernel和user内存不能直接互访
 		//__get_user,kernel从用户空间获得一个值
 		//__put_user,kernel向用户空间传递一个值
+		//__get_user(x,ptr),Returns zero on success, or -EFAULT on error. On error, the variable x is set to zero. 
 		if (__get_user(c, f)) {
 			memset(t, 0, n);
 			break;
@@ -1368,15 +1372,18 @@ int copy_mount_options(const void __user * data, unsigned long *where)
 	 * the remainder of the page.
 	 */
 	/* copy_from_user cannot cross TASK_SIZE ! */
+	//从data开始，拷贝一个page的数据。如果data+PAGE_SIZE超出TASK_SIZE,也就是到了内核空间,就不能拷贝
 	size = TASK_SIZE - (unsigned long)data;
 	if (size > PAGE_SIZE)
 		size = PAGE_SIZE;
 
 	i = size - exact_copy_from_user((void *)page, data, size);
+	//如果一个字节都没copy
 	if (!i) {
 		free_page(page);
 		return -EFAULT;
 	}
+	//如果不满一个page,将剩下的部分填0
 	if (i != PAGE_SIZE)
 		memset((char *)page + i, 0, PAGE_SIZE - i);
 	*where = page;
@@ -1405,19 +1412,26 @@ long do_mount(char *dev_name, char *dir_name, char *type_page,
 	int mnt_flags = 0;
 
 	/* Discard magic */
+	//MS_MGC_VAL 和 MS_MGC_MSK是在以前的版本中定义的安装标志和掩码，现在的安装标志中已经不使用这些魔数了
+	//因此，当还有这个魔数时，则丢弃它。
 	if ((flags & MS_MGC_MSK) == MS_MGC_VAL)
 		flags &= ~MS_MGC_MSK;
 
 	/* Basic sanity checks */
-
+	//如果挂载字符串为空，或者字符串过长，超过PAGE_SIZE大小，则返回失败
 	if (!dir_name || !*dir_name || !memchr(dir_name, 0, PAGE_SIZE))
 		return -EINVAL;
+	//对于基于网络的文件系统dev_name可以为空
 	if (dev_name && !memchr(dev_name, 0, PAGE_SIZE))
 		return -EINVAL;
-
+	//如果data_page超过PAGE_SIZE长度，将超出部分截断
 	if (data_page)
 		((char *)data_page)[PAGE_SIZE - 1] = 0;
 
+	 /* 如果已安装文件系统对象中的安装标志MS_NOSUID、MS_NODEV、MS_NOATIME、MS_NODIRATIME、MS_NODEV或MS_NOEXEC
+	 中任一个被设置，则清除它们，并在已安装文件系统对象中设置相应的标志
+     （MNT_NOSUID、MNT_NODEV、MNT_NOEXEC、MNT_NOATIME、MNT_NODIRATIME）。*/
+  
 	/* Separate the per-mountpoint flags */
 	if (flags & MS_NOSUID)
 		mnt_flags |= MNT_NOSUID;
@@ -1442,6 +1456,7 @@ long do_mount(char *dev_name, char *dir_name, char *type_page,
 	if (retval)
 		goto dput_out;
 
+	//如果MS_REMOUNT标志被指定，其目的通常是改变超级块对象s_flags字段的安装标志，
 	if (flags & MS_REMOUNT)
 		//修改挂载选项
 		retval = do_remount(&nd, flags & ~MS_REMOUNT, mnt_flags,
@@ -1575,17 +1590,20 @@ asmlinkage long sys_mount(char __user * dev_name, char __user * dir_name,
 	unsigned long type_page;
 	unsigned long dev_page;
 	char *dir_page;
+	//char *dev_page; 
 
 	//复制挂载选项
 	retval = copy_mount_options(type, &type_page);
 	if (retval < 0)
 		return retval;
 
+	//getname()在复制时遇到字符串结尾符“\0”就停止
 	dir_page = getname(dir_name);
 	retval = PTR_ERR(dir_page);
 	if (IS_ERR(dir_page))
 		goto out1;
 
+	//copy_mount_option拷贝整个页面，并返回该页面的起始地址。 
 	retval = copy_mount_options(dev_name, &dev_page);
 	if (retval < 0)
 		goto out2;
