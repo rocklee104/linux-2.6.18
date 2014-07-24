@@ -106,24 +106,28 @@ void change_mnt_propagation(struct vfsmount *mnt, int type)
  * @m: the mount seen last
  * @origin: the original mount from where the tree walk initiated
  */
+ //遍历整个mount tree的slave
 static struct vfsmount *propagation_next(struct vfsmount *m,
 					 struct vfsmount *origin)
 {
 	/* are there any slaves of this mount? */
+	//先找最底层的first slave
 	if (!IS_MNT_NEW(m) && !list_empty(&m->mnt_slave_list))
 		return first_slave(m);
 
 	while (1) {
 		struct vfsmount *next;
 		struct vfsmount *master = m->mnt_master;
-
+		//找peer
 		if (master == origin->mnt_master) {
 			next = next_peer(m);
 			return ((next == origin) ? NULL : next);
+		//找slave
 		} else if (m->mnt_slave.next != &master->mnt_slave_list)
 			return next_slave(m);
 
 		/* back at master */
+		//只是简单退到master,并没有对master节点操作,对节点操作在propagate_mnt中进行
 		m = master;
 	}
 }
@@ -192,6 +196,7 @@ int propagate_mnt(struct vfsmount *dest_mnt, struct dentry *dest_dentry,
 	LIST_HEAD(tmp_list);
 	LIST_HEAD(umount_list);
 
+	//遍历mount tree,处理slave/peer/子vfsmount
 	for (m = propagation_next(dest_mnt, dest_mnt); m;
 			m = propagation_next(m, dest_mnt)) {
 		int type;

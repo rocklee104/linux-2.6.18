@@ -62,7 +62,7 @@ struct vfsmount {
 	struct list_head mnt_list;
 	//链表元素,是文件系统到期链表的成员
 	struct list_head mnt_expire;	/* link in fs-specific expiry list */
-	//链表元素,用于共享挂载的循环链表
+	//链表元素,用于共享挂载的循环链表,没有链表头
 	struct list_head mnt_share;	/* circular list of shared mounts */
 	//从属挂载的链表头,成员是mnt_slave
 	struct list_head mnt_slave_list;/* list of slave mounts */

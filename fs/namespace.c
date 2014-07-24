@@ -42,7 +42,7 @@ __cacheline_aligned_in_smp DEFINE_SPINLOCK(vfsmount_lock);
 
 static int event;
 
-//mount_hashtable桶是双向链表
+//mount_hashtable桶是双向链表,桶的偏移为以父vfsmount及子vfsmount的dentry算出的hash
 static struct list_head *mount_hashtable __read_mostly;
 static int hash_mask __read_mostly, hash_bits __read_mostly;
 static kmem_cache_t *mnt_cache __read_mostly;
@@ -187,6 +187,7 @@ void mnt_set_mountpoint(struct vfsmount *mnt, struct dentry *dentry,
 static void attach_mnt(struct vfsmount *mnt, struct nameidata *nd)
 {
 	mnt_set_mountpoint(nd->mnt, nd->dentry, mnt);
+	//将mnt加入mount_hashtable, 链表头是以父目录的vfsmnt及mnt的挂载点算出的偏移
 	list_add_tail(&mnt->mnt_hash, mount_hashtable +
 			hash(nd->mnt, nd->dentry));
 	list_add_tail(&mnt->mnt_child, &nd->mnt->mnt_mounts);
@@ -213,22 +214,29 @@ static void commit_tree(struct vfsmount *mnt)
 	//将head指向的链表插在n->list最后
 	list_splice(&head, n->list.prev);
 
+	//将mnt加入mount_hashtable中
 	list_add_tail(&mnt->mnt_hash, mount_hashtable +
 				hash(parent, mnt->mnt_mountpoint));
+	//将mnt加入父mnt的链表中
 	list_add_tail(&mnt->mnt_child, &parent->mnt_mounts);
 	touch_namespace(n);
 }
 
+//遍历mnt tree
 static struct vfsmount *next_mnt(struct vfsmount *p, struct vfsmount *root)
 {
 	struct list_head *next = p->mnt_mounts.next;
+	//没有子vfsmount
 	if (next == &p->mnt_mounts) {
 		while (1) {
+			//整个mnt tree遍历完成
 			if (p == root)
 				return NULL;
+			//找到同级子vfsmount
 			next = p->mnt_child.next;
 			if (next != &p->mnt_parent->mnt_mounts)
 				break;
+			//向上追溯
 			p = p->mnt_parent;
 		}
 	}
@@ -248,6 +256,7 @@ static struct vfsmount *skip_mnt_tree(struct vfsmount *p)
 static struct vfsmount *clone_mnt(struct vfsmount *old, struct dentry *root,
 					int flag)
 {
+	//指向同一个sb, 不需要分配空间
 	struct super_block *sb = old->mnt_sb;
 	struct vfsmount *mnt = alloc_vfsmnt(old->mnt_devname);
 
@@ -257,6 +266,7 @@ static struct vfsmount *clone_mnt(struct vfsmount *old, struct dentry *root,
 		mnt->mnt_sb = sb;
 		mnt->mnt_root = dget(root);
 		mnt->mnt_mountpoint = mnt->mnt_root;
+		//父vfsmount指向自己
 		mnt->mnt_parent = mnt;
 
 		if (flag & CL_SLAVE) {
@@ -264,10 +274,13 @@ static struct vfsmount *clone_mnt(struct vfsmount *old, struct dentry *root,
 			mnt->mnt_master = old;
 			CLEAR_MNT_SHARED(mnt);
 		} else {
+			//如果共享
 			if ((flag & CL_PROPAGATION) || IS_MNT_SHARED(old))
 				list_add(&mnt->mnt_share, &old->mnt_share);
+			//如果old有master, clone的mnt加入slave链表
 			if (IS_MNT_SLAVE(old))
 				list_add(&mnt->mnt_slave, &old->mnt_slave);
+			//clone的mnt也需要指向同一个maste 
 			mnt->mnt_master = old->mnt_master;
 		}
 		if (flag & CL_MAKE_SHARED)
@@ -721,16 +734,20 @@ struct vfsmount *copy_tree(struct vfsmount *mnt, struct dentry *dentry,
 	if (!(flag & CL_COPY_ALL) && IS_MNT_UNBINDABLE(mnt))
 		return NULL;
 
+	//clone最顶层的vfsmount
 	res = q = clone_mnt(mnt, dentry, flag);
 	if (!q)
 		goto Enomem;
 	q->mnt_mountpoint = mnt->mnt_mountpoint;
 
 	p = mnt;
+	//遍历子vfsmount
 	list_for_each_entry(r, &mnt->mnt_mounts, mnt_child) {
+	//子vfsmount必须和父vfsmount在同一fs中
 		if (!lives_below_in_same_fs(r->mnt_mountpoint, dentry))
 			continue;
 
+		//遍历子vfsmount的所有子vfsmount
 		for (s = r; s; s = next_mnt(s, r)) {
 			if (!(flag & CL_COPY_ALL) && IS_MNT_UNBINDABLE(s)) {
 				s = skip_mnt_tree(s);
@@ -849,7 +866,9 @@ static int attach_recursive_mnt(struct vfsmount *source_mnt,
 		attach_mnt(source_mnt, nd);
 		touch_namespace(current->namespace);
 	} else {
+		//设置dentry和mnt
 		mnt_set_mountpoint(dest_mnt, dest_dentry, source_mnt);
+		//处理链表及hashtable关系
 		commit_tree(source_mnt);
 	}
 
@@ -864,6 +883,7 @@ static int attach_recursive_mnt(struct vfsmount *source_mnt,
 static int graft_tree(struct vfsmount *mnt, struct nameidata *nd)
 {
 	int err;
+	//建立mnt tree时不能有MS_NOUSER 
 	if (mnt->mnt_sb->s_flags & MS_NOUSER)
 		return -EINVAL;
 
@@ -1111,8 +1131,12 @@ int do_add_mount(struct vfsmount *newmnt, struct nameidata *nd,
 
 	down_write(&namespace_sem);
 	/* Something was mounted here while we slept */
-	while (d_mountpoint(nd->dentry) && follow_down(&nd->mnt, &nd->dentry))
+	//在do_mount中虽然会跟踪挂载点,但是在do_kern_mount函数中从设备上读入超级块的过程是个较为漫长的过程,
+	//当前进程在等待从设备上读入超级块的过程中几乎可肯定要睡眠,所以必须进一步检测新的安装点
+	while (d_mountpoint(nd->dentry) && follow_down(&nd->mnt, &nd->dentry)) {
 		;
+	}
+
 	err = -EINVAL;
 	if (!check_mnt(nd->mnt))
 		goto unlock;
