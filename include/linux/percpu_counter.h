@@ -21,6 +21,7 @@ struct percpu_counter {
 };
 
 #if NR_CPUS >= 16
+//FBC_BATCH就是percpu的阀值
 #define FBC_BATCH	(NR_CPUS*2)
 #else
 #define FBC_BATCH	(NR_CPUS*4)

@@ -351,6 +351,7 @@ static int bdev_set(struct inode *inode, void *data)
 	return 0;
 }
 
+//全局链表头,用于记录系统中所有的block device
 static LIST_HEAD(all_bdevs);
 
 struct block_device *bdget(dev_t dev)
@@ -358,6 +359,8 @@ struct block_device *bdget(dev_t dev)
 	struct block_device *bdev;
 	struct inode *inode;
 
+	/*这里先在inode的哈希表中进行查找与dev设备号对应的inode，如果没找到的话， 
+    则通过bdev伪文件系统创建bdev_inode(包含inode和block device的结构体)*/  
 	inode = iget5_locked(bd_mnt->mnt_sb, hash(dev),
 			bdev_test, bdev_set, &dev);
 
@@ -414,14 +417,17 @@ static struct block_device *bd_acquire(struct inode *inode)
 	struct block_device *bdev;
 
 	spin_lock(&bdev_lock);
+	//如果这个设备之前被打开过则可以直接通过i_bdev获取  
 	bdev = inode->i_bdev;
 	if (bdev) {
+		//增加引用计数
 		atomic_inc(&bdev->bd_inode->i_count);
 		spin_unlock(&bdev_lock);
 		return bdev;
 	}
 	spin_unlock(&bdev_lock);
 
+	//通过设备号的信息来获取block device实例  
 	bdev = bdget(inode->i_rdev);
 	if (bdev) {
 		spin_lock(&bdev_lock);

@@ -700,6 +700,7 @@ int get_sb_bdev(struct file_system_type *fs_type,
 	struct super_block *s;
 	int error = 0;
 
+	//打开dev_name块设备
 	bdev = open_bdev_excl(dev_name, flags, fs_type);
 	if (IS_ERR(bdev))
 		return PTR_ERR(bdev);
@@ -710,11 +711,14 @@ int get_sb_bdev(struct file_system_type *fs_type,
 	 * while we are mounting
 	 */
 	mutex_lock(&bdev->bd_mount_mutex);
+	//搜索文件系统的超级块对象链表,如果找到一个块设备相关的超级块,则返回它的地址,
+	//否则,分配并初始化一个新的超级块对象,把它插入到文件系统链表和超级块全局链表中,并返回其地址。
 	s = sget(fs_type, test_bdev_super, set_bdev_super, bdev);
 	mutex_unlock(&bdev->bd_mount_mutex);
 	if (IS_ERR(s))
 		goto error_s;
 
+	//如果为真,返回sb的地址
 	if (s->s_root) {
 		if ((flags ^ s->s_flags) & MS_RDONLY) {
 			up_write(&s->s_umount);
@@ -725,11 +729,15 @@ int get_sb_bdev(struct file_system_type *fs_type,
 
 		close_bdev_excl(bdev);
 	} else {
+	//否则,把参数flags中的值拷贝到超级块的s_flags字段
 		char b[BDEVNAME_SIZE];
 
 		s->s_flags = flags;
+		//设置sb的s_id
 		strlcpy(s->s_id, bdevname(bdev, b), sizeof(s->s_id));
+		//设置fs的block size
 		sb_set_blocksize(s, block_size(bdev));
+		//根据文件系统填充sb的其他字段
 		error = fill_super(s, data, flags & MS_SILENT ? 1 : 0);
 		if (error) {
 			up_write(&s->s_umount);

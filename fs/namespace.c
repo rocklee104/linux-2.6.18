@@ -883,7 +883,7 @@ static int attach_recursive_mnt(struct vfsmount *source_mnt,
 static int graft_tree(struct vfsmount *mnt, struct nameidata *nd)
 {
 	int err;
-	//建立mnt tree时不能有MS_NOUSER 
+	//建立mnt tree时不能有MS_NOUSER,即不能被用户挂载
 	if (mnt->mnt_sb->s_flags & MS_NOUSER)
 		return -EINVAL;
 

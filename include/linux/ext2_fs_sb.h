@@ -36,9 +36,11 @@ struct ext2_sb_info {
 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
 	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
 	struct buffer_head ** s_group_desc;
+	//保存了挂载选项, mount flags
 	unsigned long  s_mount_opt;
 	uid_t s_resuid;
 	gid_t s_resgid;
+	//当前挂载状态
 	unsigned short s_mount_state;
 	unsigned short s_pad;
 	int s_addr_per_block_bits;
@@ -47,7 +49,9 @@ struct ext2_sb_info {
 	int s_first_ino;
 	spinlock_t s_next_gen_lock;
 	u32 s_next_generation;
+	//目录总数
 	unsigned long s_dir_count;
+	//指向一个数组,orlov分配器使用
 	u8 *s_debts;
 	struct percpu_counter s_freeblocks_counter;
 	struct percpu_counter s_freeinodes_counter;

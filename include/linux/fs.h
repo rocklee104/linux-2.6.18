@@ -134,6 +134,7 @@ extern int dir_notify_enable;
 #define MS_SLAVE	(1<<19)	/* change to slave */
 #define MS_SHARED	(1<<20)	/* change to shared */
 #define MS_ACTIVE	(1<<30)
+//提供给伪文件系统使用,防止被用户挂载
 #define MS_NOUSER	(1<<31)
 
 /*
@@ -425,23 +426,32 @@ struct address_space {
 
 struct block_device {
 	dev_t			bd_dev;  /* not a kdev_t - it's a search key */
+	//inode of block device
 	struct inode *		bd_inode;	/* will die */
+	//调用do_open打开该块设备的次数
 	int			bd_openers;
 	struct mutex		bd_mutex;	/* open/close mutex */
 	struct mutex		bd_mount_mutex;	/* mount mutex */
+	//链表头,该链表包好了表示该设备的设备特殊文件的所有inode
 	struct list_head	bd_inodes;
 	void *			bd_holder;
 	int			bd_holders;
 #ifdef CONFIG_SYSFS
 	struct list_head	bd_holder_list;
 #endif
+	//如果该block_device描述的是一个分区，则该变量指向描述主块设备的block_device，反之，其指向本身
 	struct block_device *	bd_contains;
 	unsigned		bd_block_size;
+	//包含在该设备上的分区
 	struct hd_struct *	bd_part;
 	/* number of times partitions within this device have been opened. */
+	//内核中引用该设备内分区的次数
 	unsigned		bd_part_count;
+	//设置为1时,表示该分区在内核中的信息无效,因为磁盘上的分区已经改变,
+	//下一次打开该设备时,将要重新扫描分区表
 	int			bd_invalidated;
 	struct gendisk *	bd_disk;
+	//链表元素,链表头是全局变量all_bdevs,用于记录所有的块设备
 	struct list_head	bd_list;
 	struct backing_dev_info *bd_inode_backing_dev_info;
 	/*

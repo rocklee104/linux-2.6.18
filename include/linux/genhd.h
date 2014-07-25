@@ -75,7 +75,9 @@ struct partition {
 } __attribute__((packed));
 
 struct hd_struct {
+	//起始扇区
 	sector_t start_sect;
+	//扇区数量
 	sector_t nr_sects;
 	struct kobject kobj;
 	struct kobject *holder_dir;
@@ -104,14 +106,19 @@ struct gendisk {
 	int minors;                     /* maximum number of minors, =1 for
                                          * disks that can't be partitioned. */
 	char disk_name[32];		/* name of major driver */
+	//每个分区对应一个数组项									 
 	struct hd_struct **part;	/* [indexed by minor] */
+	//if part_uevent_suppress is positive, 检测到设备的分区改变时
+	//就不会向用户空间发送热插拔事件.
 	int part_uevent_suppress;
 	struct block_device_operations *fops;
 	struct request_queue *queue;
 	void *private_data;
+	//磁盘容量,单位是扇区
 	sector_t capacity;
 
 	int flags;
+	//标识该磁盘所属的硬件设备,指针指向驱动模型的一个对象
 	struct device *driverfs_dev;
 	struct kobject kobj;
 	struct kobject *holder_dir;

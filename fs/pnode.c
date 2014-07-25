@@ -118,7 +118,7 @@ static struct vfsmount *propagation_next(struct vfsmount *m,
 	while (1) {
 		struct vfsmount *next;
 		struct vfsmount *master = m->mnt_master;
-		//ÕÒpeer
+		//ÕÒoriginµÄpeer
 		if (master == origin->mnt_master) {
 			next = next_peer(m);
 			return ((next == origin) ? NULL : next);

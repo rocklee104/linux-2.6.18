@@ -74,6 +74,7 @@ static unsigned int i_hash_shift __read_mostly;
 LIST_HEAD(inode_in_use);
 //inode_unused表示空闲的,未使用过的inode
 LIST_HEAD(inode_unused);
+//backet的位置根据sb和hash生成 
 static struct hlist_head *inode_hashtable __read_mostly;
 
 /*
@@ -929,6 +930,7 @@ EXPORT_SYMBOL(ilookup);
  *
  * Note both @test and @set are called with the inode_lock held, so can't sleep.
  */
+ //inode number不足以用于唯一标识inode时候使用
 struct inode *iget5_locked(struct super_block *sb, unsigned long hashval,
 		int (*test)(struct inode *, void *),
 		int (*set)(struct inode *, void *), void *data)
