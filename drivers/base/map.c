@@ -17,13 +17,20 @@
 #include <linux/kobj_map.h>
 
 struct kobj_map {
+	//散列表元素,通过单链表组织
 	struct probe {
+		//将散列元素连接在一个单链表中
 		struct probe *next;
 		dev_t dev;
+		//设备号的连续范围, 链表中range从小到大排列
 		unsigned long range;
+		//指向提供设备驱动的模块
 		struct module *owner;
+		//指向一个函数,返回与设备关联的kobject实例
 		kobj_probe_t *get;
 		int (*lock)(dev_t, void *);
+		//对于字符设备,data指向struct cdev的一个实例
+		//对于block device, data指向struct genhd的实例
 		void *data;
 	} *probes[255];
 	struct mutex *lock;
@@ -33,6 +40,7 @@ int kobj_map(struct kobj_map *domain, dev_t dev, unsigned long range,
 	     struct module *module, kobj_probe_t *probe,
 	     int (*lock)(dev_t, void *), void *data)
 {
+	//主设备的个数
 	unsigned n = MAJOR(dev + range - 1) - MAJOR(dev) + 1;
 	unsigned index = MAJOR(dev);
 	unsigned i;
@@ -148,6 +156,7 @@ struct kobj_map *kobj_map_init(kobj_probe_t *base_probe, struct mutex *lock)
 	base->dev = 1;
 	base->range = ~0;
 	base->get = base_probe;
+	//给backet初始化
 	for (i = 0; i < 255; i++)
 		p->probes[i] = base;
 	p->lock = lock;

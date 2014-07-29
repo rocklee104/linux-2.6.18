@@ -18,6 +18,7 @@ void init_waitqueue_head(wait_queue_head_t *q)
 
 EXPORT_SYMBOL(init_waitqueue_head);
 
+//将非互斥进程添加到等待队列的前部
 void fastcall add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	unsigned long flags;
@@ -29,6 +30,7 @@ void fastcall add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 }
 EXPORT_SYMBOL(add_wait_queue);
 
+//将互斥进程添加到等待队列的末尾
 void fastcall add_wait_queue_exclusive(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	unsigned long flags;
@@ -121,6 +123,7 @@ void fastcall finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 	 */
 	if (!list_empty_careful(&wait->task_list)) {
 		spin_lock_irqsave(&q->lock, flags);
+		//将wait从等待队列中删除
 		list_del_init(&wait->task_list);
 		spin_unlock_irqrestore(&q->lock, flags);
 	}
@@ -167,6 +170,7 @@ __wait_on_bit(wait_queue_head_t *wq, struct wait_bit_queue *q,
 		prepare_to_wait(wq, &q->wait, mode);
 		if (test_bit(q->key.bit_nr, q->key.flags))
 			ret = (*action)(q->key.flags);
+		//当bit_nr没有被清除时,就一直循环
 	} while (test_bit(q->key.bit_nr, q->key.flags) && !ret);
 	finish_wait(wq, &q->wait);
 	return ret;

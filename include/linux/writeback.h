@@ -76,6 +76,7 @@ void sync_inodes(int wait);
 static inline void wait_on_inode(struct inode *inode)
 {
 	might_sleep();
+	//等待inode的__I_LOCK被清除
 	wait_on_bit(&inode->i_state, __I_LOCK, inode_wait,
 							TASK_UNINTERRUPTIBLE);
 }

@@ -133,6 +133,7 @@ int unregister_blkdev(unsigned int major, const char *name)
 
 EXPORT_SYMBOL(unregister_blkdev);
 
+//全局数组实现散列表, 使主设备号作为散列键, 键值通过major % 255获取
 static struct kobj_map *bdev_map;
 
 /*
@@ -208,7 +209,9 @@ void unlink_gendisk(struct gendisk *disk)
  */
 struct gendisk *get_gendisk(dev_t dev, int *part)
 {
+	//通过dev number获取kobject
 	struct kobject *kobj = kobj_lookup(bdev_map, dev, part);
+	//通过kboject获取gendisk
 	return  kobj ? to_disk(kobj) : NULL;
 }
 

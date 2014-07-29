@@ -28,6 +28,7 @@ struct bdev_inode {
 	struct inode vfs_inode;
 };
 
+//通过inode找到bdev_inode
 static inline struct bdev_inode *BDEV_I(struct inode *inode)
 {
 	return container_of(inode, struct bdev_inode, vfs_inode);
@@ -310,6 +311,7 @@ static struct file_system_type bd_type = {
 	.kill_sb	= kill_anon_super,
 };
 
+//伪文件系统bdeb的vfsmount指针
 static struct vfsmount *bd_mnt __read_mostly;
 struct super_block *blockdev_superblock;
 
@@ -354,6 +356,7 @@ static int bdev_set(struct inode *inode, void *data)
 //全局链表头,用于记录系统中所有的block device
 static LIST_HEAD(all_bdevs);
 
+//根据设备号获取block device
 struct block_device *bdget(dev_t dev)
 {
 	struct block_device *bdev;
@@ -411,7 +414,8 @@ void bdput(struct block_device *bdev)
 }
 
 EXPORT_SYMBOL(bdput);
- 
+
+//通过inode获取block_device
 static struct block_device *bd_acquire(struct inode *inode)
 {
 	struct block_device *bdev;
@@ -968,6 +972,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 
 	mutex_lock_nested(&bdev->bd_mutex, subclass);
 
+	//此block device没有被打开过
 	if (!bdev->bd_openers) {
 		bdev->bd_disk = disk;
 		bdev->bd_contains = bdev;
@@ -1015,10 +1020,13 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 			mutex_unlock(&whole->bd_mutex);
 		}
 	} else {
+	//block device被打开过
 		put_disk(disk);
 		module_put(owner);
+		//如果此block device是一个主设备
 		if (bdev->bd_contains == bdev) {
 			if (bdev->bd_disk->fops->open) {
+				//调用具体设备的open
 				ret = bdev->bd_disk->fops->open(bdev->bd_inode, file);
 				if (ret)
 					goto out;
@@ -1061,6 +1069,7 @@ int blkdev_get(struct block_device *bdev, mode_t mode, unsigned flags)
 	 * For now, block device ->open() routine must _not_
 	 * examine anything in 'inode' argument except ->i_rdev.
 	 */
+	 //将结构体初始化为0
 	struct file fake_file = {};
 	struct dentry fake_dentry = {};
 	fake_file.f_mode = mode;
@@ -1270,6 +1279,7 @@ struct block_device *open_bdev_excl(const char *path, int flags, void *holder)
 	mode_t mode = FMODE_READ;
 	int error = 0;
 
+	//根据路径名获取block_device
 	bdev = lookup_bdev(path);
 	if (IS_ERR(bdev))
 		return bdev;

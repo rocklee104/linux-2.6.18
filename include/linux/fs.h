@@ -432,7 +432,7 @@ struct block_device {
 	int			bd_openers;
 	struct mutex		bd_mutex;	/* open/close mutex */
 	struct mutex		bd_mount_mutex;	/* mount mutex */
-	//链表头,该链表包好了表示该设备的设备特殊文件的所有inode
+	//链表头,链表成员是inode->i_devices, 该链表包含了表示该设备的设备特殊文件的所有inode
 	struct list_head	bd_inodes;
 	void *			bd_holder;
 	int			bd_holders;
@@ -569,7 +569,7 @@ struct inode {
 	struct dquot		*i_dquot[MAXQUOTAS];
 #endif
 	/* These three should probably be a union */
-    //用于字符或块设备索引节点链表的指针
+    //链表元素,链表头是字符设备/块设备的lis 
 	struct list_head	i_devices;
 //后续的代码中,以下3个成员是一个联合中的
 	struct pipe_inode_info	*i_pipe;
@@ -1267,14 +1267,23 @@ struct super_operations {
 };
 
 /* Inode state bits.  Protected by inode_lock. */
+//inode本身被修改，但是并不需要同步，一般i_atime更新会导致这个状态
 #define I_DIRTY_SYNC		1 /* Not dirty enough for O_DATASYNC */
+//inode上的数据被更新，但是inode本身是同步状态
 #define I_DIRTY_DATASYNC	2 /* Data-related inode changes pending */
+//inode上有脏数据页，但inode本身却是同步状态
 #define I_DIRTY_PAGES		4 /* Data-related inode changes pending */
+//仅用于等待队列
 #define __I_LOCK		3
+//inode被加锁
 #define I_LOCK			(1 << __I_LOCK)
+//inode将要被销毁，但是其中仍然有脏数据尚未同步
 #define I_FREEING		16
+//inode没有脏数据并且可以被销毁
 #define I_CLEAR			32
+//inode处于生成状态
 #define I_NEW			64
+//inode将要被销毁
 #define I_WILL_FREE		128
 
 #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)

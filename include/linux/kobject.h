@@ -49,12 +49,17 @@ enum kobject_action {
 };
 
 struct kobject {
+	//指向设备名称的指针
 	const char		* k_name;
+	//sysfs文件系统中与该对象对应的文件节点路径指针
 	char			name[KOBJ_NAME_LEN];
 	struct kref		kref;
+	//用于将Kobject加入到Kset中的list_head
 	struct list_head	entry;
 	struct kobject		* parent;
+	//该kobject属于的Kset
 	struct kset		* kset;
+	//该Kobject属于的kobj_type。每个Kobject必须有一个ktype
 	struct kobj_type	* ktype;
 	struct dentry		* dentry;
 	wait_queue_head_t	poll;
@@ -120,8 +125,10 @@ struct kset_uevent_ops {
 struct kset {
 	struct subsystem	* subsys;
 	struct kobj_type	* ktype;
+	//用于保存该kset下所有的kobject的链表
 	struct list_head	list;
 	spinlock_t		list_lock;
+	//该kset自己的kobject（kset是一个特殊的kobject，也会在sysfs中以目录的形式体现）
 	struct kobject		kobj;
 	struct kset_uevent_ops	* uevent_ops;
 };

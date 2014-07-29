@@ -31,6 +31,7 @@ int default_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key
 
 struct __wait_queue {
 	unsigned int flags;
+//表示节点对应进程对临界资源使用具有排他性。在唤醒是会唤醒所有非排他性进程和一定数量的排他性进程。
 #define WQ_FLAG_EXCLUSIVE	0x01
 	void *private;
 	wait_queue_func_t func;
@@ -420,6 +421,7 @@ int wake_bit_function(wait_queue_t *wait, unsigned mode, int sync, void *key);
 static inline int wait_on_bit(void *word, int bit,
 				int (*action)(void *), unsigned mode)
 {
+	//word中的bit位是否被置位,没被置位就return 0
 	if (!test_bit(bit, word))
 		return 0;
 	return out_of_line_wait_on_bit(word, bit, action, mode);

@@ -6,6 +6,7 @@ struct cdev {
 	struct kobject kobj;
 	struct module *owner;
 	const struct file_operations *ops;
+	//链表头,链表成员是inode->i_devices
 	struct list_head list;
 	dev_t dev;
 	unsigned int count;

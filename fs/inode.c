@@ -229,13 +229,18 @@ static void init_once(void * foo, kmem_cache_t * cachep, unsigned long flags)
  */
 void __iget(struct inode * inode)
 {
+	//如果已经有进程引用了此inode, 仅仅对计数器加1
 	if (atomic_read(&inode->i_count)) {
 		atomic_inc(&inode->i_count);
 		return;
 	}
+	
 	atomic_inc(&inode->i_count);
+	//如果i_count为0,并且inode没有标记为dirty或没有标记为locked(干净,没有锁)
+	//此inode肯定在inode_unused队列中,将其从inode_used中移动到inode_in_use队列中 
 	if (!(inode->i_state & (I_DIRTY|I_LOCK)))
 		list_move(&inode->i_list, &inode_in_use);
+	
 	inodes_stat.nr_unused--;
 }
 
@@ -509,6 +514,7 @@ repeat:
 			continue;
 		if (!test(inode, data))
 			continue;
+		//如果inode将要被销毁,等待inode释放完毕
 		if (inode->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE)) {
 			__wait_on_freeing_inode(inode);
 			goto repeat;
@@ -607,8 +613,10 @@ static struct inode * get_new_inode(struct super_block *sb, struct hlist_head *h
 
 		spin_lock(&inode_lock);
 		/* We released the lock, so.. */
+		//根据sb和data在高速缓存中找到inode 
 		old = find_inode(sb, head, test, data);
 		if (!old) {
+			//在缓存中没找到inode, 才使用刚才分配的inode 
 			if (set(inode, data))
 				goto set_failed;
 
@@ -616,6 +624,7 @@ static struct inode * get_new_inode(struct super_block *sb, struct hlist_head *h
 			list_add(&inode->i_list, &inode_in_use);
 			list_add(&inode->i_sb_list, &sb->s_inodes);
 			hlist_add_head(&inode->i_hash, head);
+			//inode还不能使用
 			inode->i_state = I_LOCK|I_NEW;
 			spin_unlock(&inode_lock);
 
@@ -786,6 +795,7 @@ static struct inode *ifind(struct super_block *sb,
 		__iget(inode);
 		spin_unlock(&inode_lock);
 		if (likely(wait))
+			//等待这个inode激活或者删除完成
 			wait_on_inode(inode);
 		return inode;
 	}
@@ -937,7 +947,7 @@ struct inode *iget5_locked(struct super_block *sb, unsigned long hashval,
 {
 	struct hlist_head *head = inode_hashtable + hash(sb, hashval);
 	struct inode *inode;
-
+	//在高速缓存中搜索inode
 	inode = ifind(sb, head, test, data, 1);
 	if (inode)
 		return inode;
@@ -945,6 +955,7 @@ struct inode *iget5_locked(struct super_block *sb, unsigned long hashval,
 	 * get_new_inode() will do the right thing, re-trying the search
 	 * in case it had to block at any point.
 	 */
+	//如果调用ifind没有找到inode
 	return get_new_inode(sb, head, test, set, data);
 }
 
@@ -1315,12 +1326,14 @@ int inode_wait(void *word)
  *
  * This is called with inode_lock held.
  */
+ //DTRT -- Do The Right Thing
 static void __wait_on_freeing_inode(struct inode *inode)
 {
 	wait_queue_head_t *wq;
 	DEFINE_WAIT_BIT(wait, &inode->i_state, __I_LOCK);
 	wq = bit_waitqueue(&inode->i_state, __I_LOCK);
 	prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
+	//在schedule之前unlock
 	spin_unlock(&inode_lock);
 	schedule();
 	finish_wait(wq, &wait.wait);
