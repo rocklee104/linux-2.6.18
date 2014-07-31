@@ -67,6 +67,8 @@ int kobj_map(struct kobj_map *domain, dev_t dev, unsigned long range,
 		struct probe **s = &domain->probes[index % 255];
 		while (*s && (*s)->range < range)
 			s = &(*s)->next;
+
+		//将p查到s前面,保证range从小到大排列
 		p->next = *s;
 		*s = p;
 	}
@@ -100,7 +102,8 @@ void kobj_unmap(struct kobj_map *domain, dev_t dev, unsigned long range)
 	mutex_unlock(domain->lock);
 	kfree(found);
 }
-
+ 
+//通过设备号获取kobject指针
 struct kobject *kobj_lookup(struct kobj_map *domain, dev_t dev, int *index)
 {
 	struct kobject *kobj;
@@ -114,16 +117,25 @@ retry:
 		struct module *owner;
 		void *data;
 
+		//链表中的元素, range从小到大排列, p->dev应该要<=dev,
+		//p->dev + p->range - 1也就是最大的一个次设备号成员应该>=dev,
+		//初始化后p->dev就是主设备号, p->range为(-1)UL
 		if (p->dev > dev || p->dev + p->range - 1 < dev)
 			continue;
+
+		//p->range最大为~0, 故p->range - 1必须要<best
 		if (p->range - 1 >= best)
 			break;
+		
 		if (!try_module_get(p->owner))
+			//模块获取失败
 			continue;
+		
 		owner = p->owner;
 		data = p->data;
 		probe = p->get;
 		best = p->range - 1;
+		//获取次设备号
 		*index = dev - p->dev;
 		if (p->lock && p->lock(dev, data) < 0) {
 			module_put(owner);

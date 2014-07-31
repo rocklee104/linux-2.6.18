@@ -201,7 +201,9 @@ extern enum system_states {
 	SYSTEM_SUSPEND_DISK,
 } system_state;
 
+//模块license专有,非gpl兼容license
 #define TAINT_PROPRIETARY_MODULE	(1<<0)
+//强制请求装载
 #define TAINT_FORCED_MODULE		(1<<1)
 #define TAINT_UNSAFE_SMP		(1<<2)
 #define TAINT_FORCED_RMMOD		(1<<3)

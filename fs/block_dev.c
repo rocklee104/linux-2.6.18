@@ -885,6 +885,7 @@ void bd_set_size(struct block_device *bdev, loff_t size)
 
 	bdev->bd_inode->i_size = size;
 	while (bsize < PAGE_CACHE_SIZE) {
+		//如果扇区大小小于页面大小 
 		if (size & bsize)
 			break;
 		bsize <<= 1;
@@ -977,13 +978,17 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 		bdev->bd_disk = disk;
 		bdev->bd_contains = bdev;
 		if (!part) {
+			//block device是一个分区
 			struct backing_dev_info *bdi;
 			if (disk->fops->open) {
 				ret = disk->fops->open(bdev->bd_inode, file);
 				if (ret)
+					//如果open失败
 					goto out_first;
 			}
+			//disk->fops->open有可能会修改bd_openers
 			if (!bdev->bd_openers) {
+				//一个扇区512字节,左移9位
 				bd_set_size(bdev,(loff_t)get_capacity(disk)<<9);
 				bdi = blk_get_backing_dev_info(bdev);
 				if (bdi == NULL)
@@ -993,6 +998,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 			if (bdev->bd_invalidated)
 				rescan_partitions(disk, bdev);
 		} else {
+			//不是分区
 			struct hd_struct *p;
 			struct block_device *whole;
 			whole = bdget_disk(disk, 0);

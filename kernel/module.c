@@ -508,7 +508,9 @@ static void module_unload_init(struct module *mod)
 /* modules using other modules */
 struct module_use
 {
+	//链表成员,链表头是struct module的modules_which_use_me
 	struct list_head list;
+	//指向依赖其他模块的那个模块
 	struct module *module_which_uses;
 };
 
@@ -531,8 +533,10 @@ static int already_uses(struct module *a, struct module *b)
 static int use_module(struct module *a, struct module *b)
 {
 	struct module_use *use;
+	//return 1 means true
 	if (b == NULL || already_uses(a, b)) return 1;
 
+	//返回1 means true, else false
 	if (!strong_try_module_get(b))
 		return 0;
 

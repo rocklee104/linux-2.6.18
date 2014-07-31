@@ -31,6 +31,7 @@
 
 #define MODULE_NAME_LEN (64 - sizeof(unsigned long))
 
+//负责将name分配到内存地址value
 struct kernel_symbol
 {
 	unsigned long value;
@@ -214,6 +215,7 @@ void *__symbol_get_gpl(const char *symbol);
 
 #endif
 
+//L1高速缓存对齐
 struct module_ref
 {
 	local_t count;
@@ -221,8 +223,11 @@ struct module_ref
 
 enum module_state
 {
+	//模块正常运行
 	MODULE_STATE_LIVE,
+	//模块真正装载
 	MODULE_STATE_COMING,
+	//模块正在移除
 	MODULE_STATE_GOING,
 };
 
@@ -248,6 +253,7 @@ struct module
 	enum module_state state;
 
 	/* Member of list of modules */
+	//链表成员,链表头是全局变量modules
 	struct list_head list;
 
 	/* Unique handle for this module */
@@ -261,11 +267,15 @@ struct module
 	const char *srcversion;
 
 	/* Exported symbols */
+	//所有模块可以使用的符号
+	//syms是个数组,有num_syms个数组项
 	const struct kernel_symbol *syms;
 	unsigned int num_syms;
+	//num_syms个数组项的数组,存储了导出符号的校验和
 	const unsigned long *crcs;
 
 	/* GPL-only exported symbols. */
+	//只适用于gpl模块
 	const struct kernel_symbol *gpl_syms;
 	unsigned int num_gpl_syms;
 	const unsigned long *gpl_crcs;
@@ -274,17 +284,22 @@ struct module
 	const struct kernel_symbol *unused_syms;
 	unsigned int num_unused_syms;
 	const unsigned long *unused_crcs;
+	
 	/* GPL-only, unused exported symbols. */
+	//gpl模块中已经导出,但in-tree模块未使用的符号,
+	//在out-of-tree模块使用此类符号时,内核将输出一个警告
 	const struct kernel_symbol *unused_gpl_syms;
 	unsigned int num_unused_gpl_syms;
 	const unsigned long *unused_gpl_crcs;
 
 	/* symbols that will be GPL-only in the near future. */
+	//任意模块可以使用,但是在将来只能由gpl模块使用
 	const struct kernel_symbol *gpl_future_syms;
 	unsigned int num_gpl_future_syms;
 	const unsigned long *gpl_future_crcs;
 
 	/* Exception table */
+	//extable数组长度
 	unsigned int num_exentries;
 	const struct exception_table_entry *extable;
 
@@ -292,9 +307,11 @@ struct module
 	int (*init)(void);
 
 	/* If this is non-NULL, vfree after init() returns */
+	//初始化部分的起始地址保存在module_init
 	void *module_init;
 
 	/* Here is the actual code + data, vfree'd on unload. */
+	//核心部分
 	void *module_core;
 
 	/* Here are the sizes of the init and core sections */
@@ -313,13 +330,16 @@ struct module
 	int unsafe;
 
 	/* Am I GPL-compatible */
+	//bool变量
 	int license_gplok;
 
 #ifdef CONFIG_MODULE_UNLOAD
 	/* Reference counts */
+	//每个cpu都对应数组中的一个数组项
 	struct module_ref ref[NR_CPUS];
 
 	/* What modules depend on me? */
+	//链表头,链表元素是struct module_use的list, 记录依赖当前模块的模块
 	struct list_head modules_which_use_me;
 
 	/* Who is waiting for us to be unloaded */
@@ -331,19 +351,23 @@ struct module
 
 #ifdef CONFIG_KALLSYMS
 	/* We keep the symbol and string tables for kallsyms. */
+	//kallsyms的符号表和字符串表
 	Elf_Sym *symtab;
 	unsigned long num_symtab;
 	char *strtab;
 
 	/* Section attributes */
+	//各段的属性
 	struct module_sect_attrs *sect_attrs;
 #endif
 
 	/* Per-cpu data. */
+	//指向模块的per_cpu数据
 	void *percpu;
 
 	/* The command line arguments (may be mangled).  People like
 	   keeping pointers to this stuff */
+	//装载期间传递给模块的参数
 	char *args;
 };
 
@@ -399,6 +423,7 @@ static inline int try_module_get(struct module *module)
 	if (module) {
 		unsigned int cpu = get_cpu();
 		if (likely(module_is_live(module)))
+			//对应的cpu中的记数加1
 			local_inc(&module->ref[cpu].count);
 		else
 			ret = 0;
@@ -414,6 +439,7 @@ static inline void module_put(struct module *module)
 		local_dec(&module->ref[cpu].count);
 		/* Maybe they're waiting for us to drop reference? */
 		if (unlikely(!module_is_live(module)))
+			//模块被移除后,唤醒等待的进程
 			wake_up_process(module->waiter);
 		put_cpu();
 	}
