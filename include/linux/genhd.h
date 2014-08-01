@@ -82,6 +82,7 @@ struct hd_struct {
 	struct kobject kobj;
 	struct kobject *holder_dir;
 	unsigned ios[2], sectors[2];	/* READs and WRITEs */
+	//partno表示扇区编号
 	int policy, partno;
 };
 
@@ -102,11 +103,13 @@ struct disk_stats {
 	
 struct gendisk {
 	int major;			/* major number of driver */
+	//分区开始的num 
 	int first_minor;
+	//主次分区的总个数,如果为1,表示只有主分区,无法分配次分区
 	int minors;                     /* maximum number of minors, =1 for
                                          * disks that can't be partitioned. */
 	char disk_name[32];		/* name of major driver */
-	//每个分区对应一个数组项									 
+	//次分区的数组, 每个分区对应一个数组项									 
 	struct hd_struct **part;	/* [indexed by minor] */
 	//if part_uevent_suppress is positive, 检测到设备的分区改变时
 	//就不会向用户空间发送热插拔事件.

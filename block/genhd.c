@@ -51,6 +51,7 @@ void blkdev_show(struct seq_file *f, off_t offset)
 
 #endif /* CONFIG_PROC_FS */
 
+//获取一个设备号,其功能和字符设备register_chrdev_region一致
 int register_blkdev(unsigned int major, const char *name)
 {
 	struct blk_major_name **n, *p;
@@ -60,6 +61,7 @@ int register_blkdev(unsigned int major, const char *name)
 
 	/* temporary */
 	if (major == 0) {
+		//自动分配一个设备号,范围在1-254之间
 		for (index = ARRAY_SIZE(major_names)-1; index > 0; index--) {
 			if (major_names[index] == NULL)
 				break;
@@ -87,6 +89,7 @@ int register_blkdev(unsigned int major, const char *name)
 	index = major_to_index(major);
 
 	for (n = &major_names[index]; *n; n = &(*n)->next) {
+		//手动分配设备号的才会进入循环,例如设备号2和设备号257在同一链表中
 		if ((*n)->major == major)
 			break;
 	}
@@ -141,6 +144,7 @@ static struct kobj_map *bdev_map;
  * range must be nonzero
  * The hash chain is sorted on range, so that subranges can override.
  */
+ //将块设备注册到系统中,功能与字符设备的cdev_add一致
 void blk_register_region(dev_t dev, unsigned long range, struct module *module,
 			 struct kobject *(*probe)(dev_t, int *, void *),
 			 int (*lock)(dev_t, void *), void *data)
@@ -617,6 +621,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 			kfree(disk);
 			return NULL;
 		}
+		
 		if (minors > 1) {
 			int size = (minors - 1) * sizeof(struct hd_struct *);
 			disk->part = kmalloc_node(size, GFP_KERNEL, node_id);
@@ -626,6 +631,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 			}
 			memset(disk->part, 0, size);
 		}
+		
 		disk->minors = minors;
 		kobj_set_kset_s(disk,block_subsys);
 		kobject_init(&disk->kobj);

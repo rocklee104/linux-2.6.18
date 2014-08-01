@@ -941,6 +941,7 @@ EXPORT_SYMBOL(ilookup);
  * Note both @test and @set are called with the inode_lock held, so can't sleep.
  */
  //inode number不足以用于唯一标识inode时候使用
+ //iget5_locked还会调用set将设备号放入新产生的block_device对象的bd_dev成员中
 struct inode *iget5_locked(struct super_block *sb, unsigned long hashval,
 		int (*test)(struct inode *, void *),
 		int (*set)(struct inode *, void *), void *data)

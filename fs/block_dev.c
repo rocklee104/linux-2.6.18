@@ -981,6 +981,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 			//block device是一个分区
 			struct backing_dev_info *bdi;
 			if (disk->fops->open) {
+				//调用磁盘的open
 				ret = disk->fops->open(bdev->bd_inode, file);
 				if (ret)
 					//如果open失败

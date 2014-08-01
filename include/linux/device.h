@@ -32,17 +32,25 @@ struct device_driver;
 struct class;
 struct class_device;
 
+//每个bus_type对象都对应/sys/bus目录下的一个子目录
 struct bus_type {
+	//总线类型的名称
 	const char		* name;
 
+	//与该总线相关的subsystem
 	struct subsystem	subsys;
+	//所有与该总线相关的驱动程序集合
 	struct kset		drivers;
+	//所有挂接在该总线上的设备集合
 	struct kset		devices;
 	struct klist		klist_devices;
 	struct klist		klist_drivers;
 
+	//总线属性
 	struct bus_attribute	* bus_attrs;
+	//设备属性
 	struct device_attribute	* dev_attrs;
+	//驱动属性
 	struct driver_attribute	* drv_attrs;
 
 	int		(*match)(struct device * dev, struct device_driver * drv);
@@ -296,6 +304,8 @@ struct device_attribute dev_attr_##_name = __ATTR(_name,_mode,_show,_store)
 
 extern int device_create_file(struct device *device, struct device_attribute * entry);
 extern void device_remove_file(struct device * dev, struct device_attribute * attr);
+
+//系统中的任一设备在设备模型中都由一个device对象描述
 struct device {
 	struct klist		klist_children;
 	struct klist_node	knode_parent;		/* node in sibling list */

@@ -217,6 +217,7 @@ int kobject_add(struct kobject * kobj)
  *	@kobj:	object in question.
  */
 
+//通过调用kobject init()初始化kobj，再调用kobject_add()完成该内核对象的注册
 int kobject_register(struct kobject * kobj)
 {
 	int error = -EINVAL;

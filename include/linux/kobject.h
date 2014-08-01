@@ -51,7 +51,7 @@ enum kobject_action {
 struct kobject {
 	//指向设备名称的指针
 	const char		* k_name;
-	//sysfs文件系统中与该对象对应的文件节点路径指针
+	//设备名称 
 	char			name[KOBJ_NAME_LEN];
 	struct kref		kref;
 	//用于将Kobject加入到Kset中的list_head
@@ -61,6 +61,7 @@ struct kobject {
 	struct kset		* kset;
 	//该Kobject属于的kobj_type。每个Kobject必须有一个ktype
 	struct kobj_type	* ktype;
+	//sysfs文件系统中与该对象对应的文件节点路径指针
 	struct dentry		* dentry;
 	wait_queue_head_t	poll;
 };
@@ -123,7 +124,9 @@ struct kset_uevent_ops {
 };
 
 struct kset {
+	//所在的subsystem的指针
 	struct subsystem	* subsys;
+	//指向该kset对象类型描述符的指针
 	struct kobj_type	* ktype;
 	//用于保存该kset下所有的kobject的链表
 	struct list_head	list;
@@ -172,9 +175,11 @@ extern struct kobject * kset_find_obj(struct kset *, const char *);
 #define set_kset_name(str)	.kset = { .kobj = { .name = str } }
 
 
-
+//subsystem 就是管理kset 的集合,它描述系统中某一类设备子系统
 struct subsystem {
+	//内嵌的kset对象
 	struct kset		kset;
+	//互斥访问信号量
 	struct rw_semaphore	rwsem;
 };
 
