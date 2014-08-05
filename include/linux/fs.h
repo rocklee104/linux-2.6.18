@@ -935,6 +935,7 @@ extern struct list_head super_blocks;
 extern spinlock_t sb_lock;
 
 #define sb_entry(list)	list_entry((list), struct super_block, s_list)
+//只要s_active大于0,s_count就从S_BIAS开始计数
 #define S_BIAS (1<<30)
 struct super_block {
 	//成员是file->fu_list

@@ -320,6 +320,7 @@ static ssize_t disk_attr_show(struct kobject *kobj, struct attribute *attr,
 {
 	struct gendisk *disk = to_disk(kobj);
 	struct disk_attribute *disk_attr =
+		//通过sysfs的attr找到disk_attribute
 		container_of(attr,struct disk_attribute,attr);
 	ssize_t ret = -EIO;
 
@@ -623,6 +624,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 		}
 		
 		if (minors > 1) {
+			//给次分区分配空间
 			int size = (minors - 1) * sizeof(struct hd_struct *);
 			disk->part = kmalloc_node(size, GFP_KERNEL, node_id);
 			if (!disk->part) {
@@ -633,6 +635,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 		}
 		
 		disk->minors = minors;
+		//加入block_subsys
 		kobj_set_kset_s(disk,block_subsys);
 		kobject_init(&disk->kobj);
 		rand_initialize_disk(disk);

@@ -121,6 +121,7 @@ struct dentry {
 	struct dentry_operations *d_op;
 	//dentry树的根, 超级块
 	struct super_block *d_sb;	/* The root of the dentry tree */
+	//例如sysfs,该成员就指向与dentry实例相关的sysfs_dirent实例
 	void *d_fsdata;			/* fs-specific data */
 #ifdef CONFIG_PROFILING
 	struct dcookie_struct *d_cookie; /* cookie, if any */

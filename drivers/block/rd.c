@@ -421,6 +421,7 @@ static int __init rd_init(void)
 	int i;
 	int err = -ENOMEM;
 
+	//block size±ØÐë>=512 ²¢ÇÒ < PAGE_SIZE
 	if (rd_blocksize > PAGE_SIZE || rd_blocksize < 512 ||
 			(rd_blocksize & (rd_blocksize-1))) {
 		printk("RAMDISK: wrong blocksize %d, reverting to defaults\n",

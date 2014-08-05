@@ -60,6 +60,7 @@ struct bin_attribute {
 		    struct vm_area_struct *vma);
 };
 
+//最终的show/store会调用到具体子系统的show/store
 struct sysfs_ops {
 	ssize_t	(*show)(struct kobject *, struct attribute *,char *);
 	ssize_t	(*store)(struct kobject *,struct attribute *,const char *, size_t);

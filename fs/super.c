@@ -83,7 +83,6 @@ static struct super_block *alloc_super(struct file_system_type *type)
 		 */
 		lockdep_set_class(&s->s_lock, &type->s_lock_key);
 		down_write(&s->s_umount);
-		//只要s_active大于0,s_count就从S_BIAS开始计数
 		s->s_count = S_BIAS;
 		atomic_set(&s->s_active, 1);
 		mutex_init(&s->s_vfs_rename_mutex);
@@ -295,8 +294,10 @@ struct super_block *sget(struct file_system_type *type,
 
 retry:
 	spin_lock(&sb_lock);
+	//遍历type管理的所有sb
 	if (test) list_for_each(p, &type->fs_supers) {
 		struct super_block *old;
+		//获取sb
 		old = list_entry(p, struct super_block, s_instances);
 		if (!test(old, data))
 			continue;
