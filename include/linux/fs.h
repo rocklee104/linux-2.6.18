@@ -109,6 +109,7 @@ extern int dir_notify_enable;
 /*
  * These are the fs-independent mount-flags: up to 32 flags are supported
  */
+//在用户指定rw时,传入到kernel的flag是~MS_RDONLY
 #define MS_RDONLY	 1	/* Mount read-only */
 #define MS_NOSUID	 2	/* Ignore suid and sgid bits */
 #define MS_NODEV	 4	/* Disallow access to device special files */
@@ -533,6 +534,7 @@ struct inode {
 	atomic_t		i_count;
 	//文件的格式,权限等一些模式
 	umode_t			i_mode;
+	//inode的硬连接引用计数
 	unsigned int		i_nlink;
 	uid_t			i_uid;
 	gid_t			i_gid;
@@ -752,6 +754,7 @@ struct file {
 	void			*f_security;
 
 	/* needed for tty driver, and maybe others */
+	//对于sysfs来说,这个指针就指向了sysfs_buffer
 	void			*private_data;
 
 #ifdef CONFIG_EPOLL
@@ -938,7 +941,6 @@ extern spinlock_t sb_lock;
 //只要s_active大于0,s_count就从S_BIAS开始计数
 #define S_BIAS (1<<30)
 struct super_block {
-	//成员是file->fu_list
 	struct list_head	s_list;		/* Keep this first */
 	//设备标识符
 	dev_t			s_dev;		/* search index; _not_ kdev_t */
@@ -987,6 +989,7 @@ struct super_block {
 	struct list_head	s_io;		/* parked for writeback */
 	//用于处理远程网络文件系统的匿名目录项的链表
 	struct hlist_head	s_anon;		/* anonymous dentries for (nfs) exporting */
+	//成员是file->fu_list
 	struct list_head	s_files;
 
 	//指向块设备驱动程序描述符的指针

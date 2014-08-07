@@ -293,11 +293,12 @@ struct super_block *sget(struct file_system_type *type,
 	int err;
 
 retry:
+	//获取一个sb
 	spin_lock(&sb_lock);
 	//遍历type管理的所有sb
 	if (test) list_for_each(p, &type->fs_supers) {
 		struct super_block *old;
-		//获取sb
+		//获取sb 
 		old = list_entry(p, struct super_block, s_instances);
 		if (!test(old, data))
 			continue;
@@ -307,6 +308,7 @@ retry:
 			destroy_super(s);
 		return old;
 	}
+	//分配一个sb
 	if (!s) {
 		spin_unlock(&sb_lock);
 		//分配并初始化一个sb
@@ -315,6 +317,7 @@ retry:
 			return ERR_PTR(-ENOMEM);
 		goto retry;
 	}
+	
 	err = set(s, data);
 	if (err) {
 		spin_unlock(&sb_lock);
@@ -547,16 +550,19 @@ static void mark_files_ro(struct super_block *sb)
 int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
 {
 	int retval;
-	
+
+	//mountflag rw, 但是bdev只读
 	if (!(flags & MS_RDONLY) && bdev_read_only(sb->s_bdev))
 		return -EACCES;
 	if (flags & MS_RDONLY)
 		acct_auto_close(sb);
+	//对于sysfs,因为在kernel启动过程中没有dentry_unused,这个函数没做什么事
 	shrink_dcache_sb(sb);
 	fsync_super(sb);
 
 	/* If we are remounting RDONLY and current sb is read/write,
 	   make sure there are no rw files opened */
+	//如果mount flag包含read only,但是sb不是read only的,就需要检查文件系统是否有文件被写入 
 	if ((flags & MS_RDONLY) && !(sb->s_flags & MS_RDONLY)) {
 		if (force)
 			mark_files_ro(sb);
@@ -571,6 +577,7 @@ int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
 		if (retval)
 			return retval;
 	}
+	//在remount时候只能改变MS_RDONLY/MS_SYNCHRONOUS/MS_MANDLOCK这3个标志
 	sb->s_flags = (sb->s_flags & ~MS_RMT_MASK) | (flags & MS_RMT_MASK);
 	return 0;
 }

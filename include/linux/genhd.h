@@ -128,6 +128,7 @@ struct gendisk {
 	struct kobject *slave_dir;
 
 	struct timer_rand_state *random;
+	//如果磁盘是只读的，则置为1（写操作禁止），否则为0
 	int policy;
 
 	atomic_t sync_io;		/* RAID */

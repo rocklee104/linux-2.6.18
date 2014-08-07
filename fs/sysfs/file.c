@@ -52,11 +52,15 @@ static struct sysfs_ops subsys_sysfs_ops = {
 
 
 struct sysfs_buffer {
+	//缓存区中数据的长度
 	size_t			count;
+	//数据内部当前位置,用于读取部分数据和定位
 	loff_t			pos;
+	//指向1页,用于存储数据
 	char			* page;
 	struct sysfs_ops	* ops;
 	struct semaphore	sem;
+	//指定缓存区的内容是否需要填充
 	int			needs_read_fill;
 	int			event;
 };

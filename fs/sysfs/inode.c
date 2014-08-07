@@ -96,6 +96,7 @@ static inline void set_default_inode_attr(struct inode * inode, mode_t mode)
 	inode->i_mode = mode;
 	inode->i_uid = 0;
 	inode->i_gid = 0;
+	//初始化的时候a/m/c time都是一样的
 	inode->i_atime = inode->i_mtime = inode->i_ctime = CURRENT_TIME;
 }
 

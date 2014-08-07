@@ -695,13 +695,16 @@ void set_disk_ro(struct gendisk *disk, int flag)
 
 EXPORT_SYMBOL(set_disk_ro);
 
+//判断bdev是否只读
 int bdev_read_only(struct block_device *bdev)
 {
 	if (!bdev)
 		return 0;
 	else if (bdev->bd_contains != bdev)
+		//如果bdev表示的是一个次分区
 		return bdev->bd_part->policy;
 	else
+		//如果bdev表示的是一个主分区
 		return bdev->bd_disk->policy;
 }
 

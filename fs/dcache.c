@@ -33,7 +33,6 @@
 #include <linux/swap.h>
 #include <linux/bootmem.h>
 
-
 int sysctl_vfs_cache_pressure __read_mostly = 100;
 EXPORT_SYMBOL_GPL(sysctl_vfs_cache_pressure);
 
@@ -63,7 +62,9 @@ static unsigned int d_hash_shift __read_mostly;
 
 //记录内存中活动的dentry
 static struct hlist_head *dentry_hashtable __read_mostly;
-//d_count == 0 的dentry实例都放在dentry_unused中
+//d_count == 0 的dentry实例都放在dentry_unused中,它们被再次访问的可能性很大,不能将它们立即丢弃
+//每一个处于unused状态下的dentry通过其d_lru指针域链入系统全局的LRU链表,
+//表头由dentry_unused指针来定义
 static LIST_HEAD(dentry_unused);
 
 /* Statistics gathering. */
@@ -101,6 +102,7 @@ static void dentry_iput(struct dentry * dentry)
 	struct inode *inode = dentry->d_inode;
 	if (inode) {
 		dentry->d_inode = NULL;
+		//解除对inode的指向 
 		list_del_init(&dentry->d_alias);
 		spin_unlock(&dentry->d_lock);
 		spin_unlock(&dcache_lock);
@@ -372,7 +374,9 @@ static void prune_one_dentry(struct dentry * dentry)
 {
 	struct dentry * parent;
 
+	//从hash表中删除
 	__d_drop(dentry);
+	//从目录树中删除
 	list_del(&dentry->d_u.d_child);
 	dentry_stat.nr_dentry--;	/* For d_free, below */
 	dentry_iput(dentry);
@@ -521,10 +525,14 @@ void shrink_dcache_sb(struct super_block * sb)
 	 * superblock to the most recent end of the unused list.
 	 */
 	spin_lock(&dcache_lock);
+	
 	list_for_each_safe(tmp, next, &dentry_unused) {
-		dentry = list_entry(tmp, struct dentry, d_lru);
+		//获取dentry_unused中的一个dentry
+		dentry = list_entry(tmp, struct dentry, d_lru); 
+
 		if (dentry->d_sb != sb)
 			continue;
+		//将特定的sb移动到dentry_unused的头部
 		list_move(tmp, &dentry_unused);
 	}
 
@@ -540,9 +548,11 @@ repeat:
 		list_del_init(tmp);
 		spin_lock(&dentry->d_lock);
 		if (atomic_read(&dentry->d_count)) {
+			//如果dentry仍然被引用,就不释放
 			spin_unlock(&dentry->d_lock);
 			continue;
 		}
+		
 		prune_one_dentry(dentry);
 		cond_resched_lock(&dcache_lock);
 		goto repeat;

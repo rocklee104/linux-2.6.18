@@ -271,17 +271,20 @@ void file_kill(struct file *file)
 	}
 }
 
+//将fs从新挂载成read only的,需要检查是否有文件被打开或者正在被写入
 int fs_may_remount_ro(struct super_block *sb)
 {
 	struct list_head *p;
 
 	/* Check that no files are currently opened for writing. */
 	file_list_lock();
+	//遍历file链表
 	list_for_each(p, &sb->s_files) {
 		struct file *file = list_entry(p, struct file, f_u.fu_list);
 		struct inode *inode = file->f_dentry->d_inode;
 
 		/* File with pending delete? */
+		//硬链接数为0,表示inode已经被删除了
 		if (inode->i_nlink == 0)
 			goto too_bad;
 
