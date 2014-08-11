@@ -518,6 +518,7 @@ static struct dentry * real_lookup(struct dentry * parent, struct qstr * name, s
 		struct dentry * dentry = d_alloc(parent, name);
 		result = ERR_PTR(-ENOMEM);
 		if (dentry) {
+			//调用具体文件系统的lookup函数
 			result = dir->i_op->lookup(dir, dentry, nd);
 			if (result)
 			//如果没找到
@@ -835,13 +836,13 @@ static __always_inline void follow_dotdot(struct nameidata *nd)
  *  small and for now I'd prefer to have fast path as straight as possible.
  *  It _is_ time-critical.
  */
- //散列中找出以 dentry 作为父目录项 , 名称为 qstr 的目录项
+ //散列中找出以 nd 作为父目录项 , 名称为 qstr 的目录项
 static int do_lookup(struct nameidata *nd, struct qstr *name,
 		     struct path *path)
 {
 	struct vfsmount *mnt = nd->mnt;
 	//首先调用__d_lookup()在目录项高速缓存中搜索分量的目录项对象
-	//由于nd保存了name前一个分量, 故nd->dentry为name的父目录, dentry就是name的目录项
+	//由于nd保存了name前一个分量, 故nd->dentry为name的父目录, dentry就是name的目录项 
 	struct dentry *dentry = __d_lookup(nd->dentry, name);
 
 	if (!dentry)

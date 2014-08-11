@@ -23,11 +23,13 @@
 static ssize_t 
 subsys_attr_show(struct kobject * kobj, struct attribute * attr, char * page)
 {
+	//获取subsystem
 	struct subsystem * s = to_subsys(kobj);
 	struct subsys_attribute * sattr = to_sattr(attr);
 	ssize_t ret = -EIO;
 
 	if (sattr->show)
+		//调用subsystem的show
 		ret = sattr->show(s,page);
 	return ret;
 }
@@ -158,6 +160,7 @@ sysfs_read_file(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 
 	down(&buffer->sem);
 	if (buffer->needs_read_fill) {
+		//填充buffer
 		if ((retval = fill_read_buffer(file->f_dentry,buffer)))
 			goto out;
 	}
@@ -255,6 +258,7 @@ sysfs_write_file(struct file *file, const char __user *buf, size_t count, loff_t
 
 static int check_perm(struct inode * inode, struct file * file)
 {
+	//找到父目录的kobject
 	struct kobject *kobj = sysfs_get_kobject(file->f_dentry->d_parent);
 	struct attribute * attr = to_attr(file->f_dentry);
 	struct sysfs_buffer * buffer;
@@ -292,6 +296,7 @@ static int check_perm(struct inode * inode, struct file * file)
 	 */
 	if (file->f_mode & FMODE_WRITE) {
 
+		//一个进程要写文件,inode写权限必须开放,并且有写函数
 		if (!(inode->i_mode & S_IWUGO) || !ops->store)
 			goto Eaccess;
 

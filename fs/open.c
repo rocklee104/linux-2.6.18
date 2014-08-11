@@ -1053,6 +1053,7 @@ repeat:
 		goto repeat;
 	}
 
+	//设置刚分配的fd在位图中的bit
 	FD_SET(fd, fdt->open_fds);
 	FD_CLR(fd, fdt->close_on_exec);
 	files->next_fd = fd + 1;

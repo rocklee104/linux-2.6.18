@@ -200,13 +200,13 @@ static int sysfs_attach_attr(struct sysfs_dirent * sd, struct dentry * dentry)
 	int (* init) (struct inode *) = NULL;
 	int error = 0;
 
-        if (sd->s_type & SYSFS_KOBJ_BIN_ATTR) {
-                bin_attr = sd->s_element;
-                attr = &bin_attr->attr;
-        } else {
-                attr = sd->s_element;
-                init = init_file;
-        }
+    if (sd->s_type & SYSFS_KOBJ_BIN_ATTR) {
+            bin_attr = sd->s_element;
+            attr = &bin_attr->attr;
+    } else {
+            attr = sd->s_element;
+            init = init_file;
+    }
 
 	dentry->d_fsdata = sysfs_get(sd);
 	sd->s_dentry = dentry;
@@ -216,11 +216,12 @@ static int sysfs_attach_attr(struct sysfs_dirent * sd, struct dentry * dentry)
 		return error;
 	}
 
-        if (bin_attr) {
+    if (bin_attr) {
 		dentry->d_inode->i_size = bin_attr->size;
 		dentry->d_inode->i_fop = &bin_fops;
 	}
 	dentry->d_op = &sysfs_dentry_ops;
+	//将dentry加入hash table
 	d_rehash(dentry);
 
 	return 0;
@@ -242,6 +243,7 @@ static int sysfs_attach_link(struct sysfs_dirent * sd, struct dentry * dentry)
 	return err;
 }
 
+//dir:父目录的inode, dentry将要返回的目标dentry, nd:父目录的nd
 static struct dentry * sysfs_lookup(struct inode *dir, struct dentry *dentry,
 				struct nameidata *nd)
 {
@@ -249,10 +251,13 @@ static struct dentry * sysfs_lookup(struct inode *dir, struct dentry *dentry,
 	struct sysfs_dirent * sd;
 	int err = 0;
 
+	//遍历dentry的同级目录
 	list_for_each_entry(sd, &parent_sd->s_children, s_sibling) {
+		//如果sd表示的是一个文件
 		if (sd->s_type & SYSFS_NOT_PINNED) {
 			const unsigned char * name = sysfs_get_name(sd);
 
+			//匹配文件名
 			if (strcmp(name, dentry->d_name.name))
 				continue;
 

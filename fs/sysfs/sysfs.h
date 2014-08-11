@@ -27,6 +27,7 @@ extern const struct file_operations sysfs_file_operations;
 extern const struct file_operations bin_fops;
 extern struct inode_operations sysfs_dir_inode_operations;
 extern struct inode_operations sysfs_symlink_inode_operations;
+extern int rocklee_flag;
 
 struct sysfs_symlink {
 	char * link_name;
@@ -57,6 +58,7 @@ static inline struct kobject *sysfs_get_kobject(struct dentry *dentry)
 
 	spin_lock(&dcache_lock);
 	if (!d_unhashed(dentry)) {
+		//dentry已经在hash表中了
 		struct sysfs_dirent * sd = dentry->d_fsdata;
 		if (sd->s_type & SYSFS_KOBJ_LINK) {
 			struct sysfs_symlink * sl = sd->s_element;

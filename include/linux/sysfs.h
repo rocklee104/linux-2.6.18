@@ -68,11 +68,14 @@ struct sysfs_ops {
 
 struct sysfs_dirent {
 	atomic_t		s_count;
+	//链表元素,链表头是父目录的s_children
 	struct list_head	s_sibling;
+	//链表头,链表元素是父目录的s_sibling
 	struct list_head	s_children;
 	void 			* s_element;
 	int			s_type;
 	umode_t			s_mode;
+	//dentry中的d_fsdata指向sysfs_dirent, s_dentry指向dentry
 	struct dentry		* s_dentry;
 	struct iattr		* s_iattr;
 	atomic_t		s_event;

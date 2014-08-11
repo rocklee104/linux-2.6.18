@@ -148,11 +148,14 @@ int sysfs_create(struct dentry * dentry, int mode, int (*init)(struct inode *))
 {
 	int error = 0;
 	struct inode * inode = NULL;
+	
 	if (dentry) {
 		if (!dentry->d_inode) {
 			struct sysfs_dirent * sd = dentry->d_fsdata;
 			if ((inode = sysfs_new_inode(mode, sd))) {
+				//创建inode
 				if (dentry->d_parent && dentry->d_parent->d_inode) {
+					//如果存在父目录,则更新父目录的mtime及ctime
 					struct inode *p_inode = dentry->d_parent->d_inode;
 					p_inode->i_mtime = p_inode->i_ctime = CURRENT_TIME;
 				}
@@ -168,6 +171,7 @@ int sysfs_create(struct dentry * dentry, int mode, int (*init)(struct inode *))
 
  Proceed:
 	if (init)
+		//初始化文件
 		error = init(inode);
 	if (!error) {
 		d_instantiate(dentry, inode);
