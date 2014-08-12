@@ -1355,6 +1355,8 @@ int __user_path_lookup_open(const char __user *name, unsigned int lookup_flags,
  * needs parent already locked. Doesn't follow mounts.
  * SMP-safe.
  */
+ //在缓存中找出以base为父母,以name为名的子dentry.
+ //没找到就调用具体文件系统创建,并加入缓存中 
 static struct dentry * __lookup_hash(struct qstr *name, struct dentry * base, struct nameidata *nd)
 {
 	struct dentry * dentry;
@@ -1362,6 +1364,7 @@ static struct dentry * __lookup_hash(struct qstr *name, struct dentry * base, st
 	int err;
 
 	inode = base->d_inode;
+	//检查是否可进入base目录
 	err = permission(inode, MAY_EXEC, nd);
 	dentry = ERR_PTR(err);
 	if (err)
@@ -1386,11 +1389,12 @@ static struct dentry * __lookup_hash(struct qstr *name, struct dentry * base, st
 		//如果d_alloc失败
 		if (!new)
 			goto out;
-		//lookup把dentry加入hash表中,返回0表示成功
+		//调用具体文件系统的lookup把dentry加入hash表中,返回0表示成功
 		dentry = inode->i_op->lookup(inode, new, nd);
 		if (!dentry)
 			dentry = new;
 		else
+			//具体文件系统返回完整的dentry,将之前申请的不完整的dentry释放
 			dput(new);
 	}
 out:

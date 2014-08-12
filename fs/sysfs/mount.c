@@ -63,6 +63,7 @@ static int sysfs_fill_super(struct super_block *sb, void *data, int silent)
 		iput(inode);
 		return -ENOMEM;
 	}
+	//将sysfs_root关联到根目录
 	root->d_fsdata = &sysfs_root;
 	sb->s_root = root;
 	return 0;

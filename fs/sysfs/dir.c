@@ -76,7 +76,15 @@ int sysfs_dirent_exist(struct sysfs_dirent *parent_sd,
 	return 0;
 }
 
-
+/**
+ * brief - sysfs_make_dirent 分配一个sysfs_dirent,并将其与dentry关联
+ * @parent_sd:  父目录的sysfs_dirent对象
+ * @dentry: 目标dentry对象 
+ * @element: 目标void *对象, 对于目录来说就是一个kobject 
+ * @mode: 目标权限 
+ * @type: sysfs中的文件类型: 
+ * return - 
+ */
 int sysfs_make_dirent(struct sysfs_dirent * parent_sd, struct dentry * dentry,
 			void * element, umode_t mode, int type)
 {
@@ -90,6 +98,7 @@ int sysfs_make_dirent(struct sysfs_dirent * parent_sd, struct dentry * dentry,
 	sd->s_type = type;
 	sd->s_dentry = dentry;
 	if (dentry) {
+		//dentry->d_fsdata使用了sysfs_dirent,故引用计数+1
 		dentry->d_fsdata = sysfs_get(sd);
 		dentry->d_op = &sysfs_dentry_ops;
 	}
@@ -120,31 +129,47 @@ static int init_symlink(struct inode * inode)
 	return 0;
 }
 
+/**
+ * brief - create_dir 
+ * @k: 目标kobject 
+ * @p: parent dentry
+ * @n: 目标name 
+ * @d: 需要返回的目标dentry
+ * return - 
+ */
 static int create_dir(struct kobject * k, struct dentry * p,
 		      const char * n, struct dentry ** d)
 {
 	int error;
+	//755的权限
 	umode_t mode = S_IFDIR| S_IRWXU | S_IRUGO | S_IXUGO;
 
 	mutex_lock(&p->d_inode->i_mutex);
+	//通过sysfs_create_dir传来的*d == NULL, 这里通过lookup_one_len分配dentry
 	*d = lookup_one_len(n, p, strlen(n));
 	if (!IS_ERR(*d)) {
  		if (sysfs_dirent_exist(p->d_fsdata, n))
+			//返回0,表示name为n的节点不存在
   			error = -EEXIST;
   		else
+			//创建目录
 			error = sysfs_make_dirent(p->d_fsdata, *d, k, mode,
 								SYSFS_DIR);
 		if (!error) {
+			//如果目录的dentry分配成功,就为其分配一个inode
 			error = sysfs_create(*d, mode, init_dir);
 			if (!error) {
+				//目录的硬链接为2
 				p->d_inode->i_nlink++;
 				(*d)->d_op = &sysfs_dentry_ops;
+				//将目录的dentry加入hash表
 				d_rehash(*d);
 			}
 		}
 		if (error && (error != -EEXIST)) {
 			struct sysfs_dirent *sd = (*d)->d_fsdata;
 			if (sd) {
+				//释放sysfs_dirent
  				list_del_init(&sd->s_sibling);
 				sysfs_put(sd);
 			}
@@ -180,6 +205,7 @@ int sysfs_create_dir(struct kobject * kobj)
 	if (kobj->parent)
 		parent = kobj->parent->dentry;
 	else if (sysfs_mount && sysfs_mount->mnt_sb)
+		//如果kobject没有父节点,就使用sysfs的root
 		parent = sysfs_mount->mnt_sb->s_root;
 	else
 		return -EFAULT;
@@ -193,6 +219,7 @@ int sysfs_create_dir(struct kobject * kobj)
 /* attaches attribute's sysfs_dirent to the dentry corresponding to the
  * attribute file
  */
+ //设置dentry的属性,并把dentry加入hashtable
 static int sysfs_attach_attr(struct sysfs_dirent * sd, struct dentry * dentry)
 {
 	struct attribute * attr = NULL;
@@ -244,6 +271,7 @@ static int sysfs_attach_link(struct sysfs_dirent * sd, struct dentry * dentry)
 }
 
 //dir:父目录的inode, dentry将要返回的目标dentry, nd:父目录的nd
+//在sysfs中填充dentry的一部分数据结构,并把dentry加入hashtable
 static struct dentry * sysfs_lookup(struct inode *dir, struct dentry *dentry,
 				struct nameidata *nd)
 {

@@ -9,6 +9,7 @@
 
 #include "sysfs.h"
 
+//查找kobject的深度
 static int object_depth(struct kobject * kobj)
 {
 	struct kobject * p = kobj;
@@ -17,6 +18,7 @@ static int object_depth(struct kobject * kobj)
 	return depth;
 }
 
+//当前kobject到底层kobject的name长度和
 static int object_path_length(struct kobject * kobj)
 {
 	struct kobject * p = kobj;
@@ -133,10 +135,12 @@ static int sysfs_getlink(struct dentry *dentry, char * path)
 	struct kobject *kobj, *target_kobj;
 	int error = 0;
 
+	//获取父目录的kobj
 	kobj = sysfs_get_kobject(dentry->d_parent);
 	if (!kobj)
 		return -EINVAL;
 
+	//获取链接的目标的kobj
 	target_kobj = sysfs_get_kobject(dentry);
 	if (!target_kobj) {
 		kobject_put(kobj);
