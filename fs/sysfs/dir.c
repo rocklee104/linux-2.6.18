@@ -159,7 +159,7 @@ static int create_dir(struct kobject * k, struct dentry * p,
 			//如果目录的dentry分配成功,就为其分配一个inode
 			error = sysfs_create(*d, mode, init_dir);
 			if (!error) {
-				//目录的硬链接为2
+				//每创建一个子目录,父目录的硬链接数+1 
 				p->d_inode->i_nlink++;
 				(*d)->d_op = &sysfs_dentry_ops;
 				//将目录的dentry加入hash表
