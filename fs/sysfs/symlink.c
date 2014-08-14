@@ -167,6 +167,7 @@ static int sysfs_getlink(struct dentry *dentry, char * path)
 static void *sysfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	int error = -ENOMEM;
+	//用一个页来保存路径名
 	unsigned long page = get_zeroed_page(GFP_KERNEL);
 	if (page)
 		//将符号链接的路径名保存到page中

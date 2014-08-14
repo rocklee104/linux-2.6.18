@@ -2764,6 +2764,7 @@ int generic_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 	void *cookie;
 
 	nd.depth = 0;
+	//通过具体文件系统的follow_link,将路径填充到nd->saved_names[nd->depth];
 	cookie = dentry->d_inode->i_op->follow_link(dentry, &nd);
 	if (!IS_ERR(cookie)) {
 		int res = vfs_readlink(dentry, buffer, buflen, nd_get_link(&nd));
