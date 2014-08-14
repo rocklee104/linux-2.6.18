@@ -144,6 +144,13 @@ struct inode * sysfs_new_inode(mode_t mode, struct sysfs_dirent * sd)
 	return inode;
 }
 
+/**
+ * brief - sysfs_create create a inode and associate dentry and inode
+ * @dentry: 目标dentry 
+ * @mode: inode中需要的权限 
+ * @init: 初始化目标的函数指针 
+ * return - 
+ */
 int sysfs_create(struct dentry * dentry, int mode, int (*init)(struct inode *))
 {
 	int error = 0;

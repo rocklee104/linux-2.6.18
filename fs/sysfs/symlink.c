@@ -22,8 +22,10 @@ static int object_depth(struct kobject * kobj)
 static int object_path_length(struct kobject * kobj)
 {
 	struct kobject * p = kobj;
+	//字符串的尾0
 	int length = 1;
 	do {
+		//kobject在sysfs中以目录的形式出现,格式是xxx/,故长度要加1
 		length += strlen(kobject_name(p)) + 1;
 		p = p->parent;
 	} while (p);
@@ -34,6 +36,7 @@ static void fill_object_path(struct kobject * kobj, char * buffer, int length)
 {
 	struct kobject * p;
 
+	//不拷贝尾0 
 	--length;
 	for (p = kobj; p; p = p->parent) {
 		int cur = strlen(kobject_name(p));
@@ -78,7 +81,7 @@ exit1:
 
 /**
  *	sysfs_create_link - create symlink between two objects.
- *	@kobj:	object whose directory we're creating the link in.
+ *	@kobj:	object whose directory we're creating the link in. It is the parent node
  *	@target:	object we're pointing to.
  *	@name:		name of the symlink.
  */
@@ -115,12 +118,15 @@ static int sysfs_get_target_path(struct kobject * kobj, struct kobject * target,
 	int depth, size;
 
 	depth = object_depth(kobj);
+	//depth是父目录的深度,要回到sysfs根目录需要depth个'../'
+	//假设一符号链接的路径是xxx/yyy/zzz/link,target的路径是aaa/bbb/ccc/
+	//符号链接中保存的路径是../../../aaa/bbb/ccc, 最后一个'/'不要 
 	size = object_path_length(target) + depth * 3 - 1;
 	if (size > PATH_MAX)
 		return -ENAMETOOLONG;
 
 	pr_debug("%s: depth = %d, size = %d\n", __FUNCTION__, depth, size);
-
+ 	//在路径前加depth个'../'以返回sysfs的根目录
 	for (s = path; depth--; s += 3)
 		strcpy(s,"../");
 
@@ -157,11 +163,13 @@ static int sysfs_getlink(struct dentry *dentry, char * path)
 
 }
 
+//往nd->saved_names[nd->depth]中填入目标路径
 static void *sysfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	int error = -ENOMEM;
 	unsigned long page = get_zeroed_page(GFP_KERNEL);
 	if (page)
+		//将符号链接的路径名保存到page中
 		error = sysfs_getlink(dentry, (char *) page); 
 	nd_set_link(nd, error ? ERR_PTR(error) : (char *)page);
 	return NULL;

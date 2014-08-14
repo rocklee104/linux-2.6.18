@@ -79,7 +79,7 @@ int sysfs_dirent_exist(struct sysfs_dirent *parent_sd,
 /**
  * brief - sysfs_make_dirent 分配一个sysfs_dirent,并将其与dentry关联
  * @parent_sd:  父目录的sysfs_dirent对象
- * @dentry: 目标dentry对象 
+ * @dentry: 目标dentry对象,如果dentry为NULL,就创建一个文件 
  * @element: 目标void *对象, 对于目录来说就是一个kobject 
  * @mode: 目标权限 
  * @type: sysfs中的文件类型: 
@@ -258,6 +258,7 @@ static int sysfs_attach_link(struct sysfs_dirent * sd, struct dentry * dentry)
 {
 	int err = 0;
 
+	//dentry对sd进行了引用,sd的引用计数+1
 	dentry->d_fsdata = sysfs_get(sd);
 	sd->s_dentry = dentry;
 	err = sysfs_create(dentry, S_IFLNK|S_IRWXUGO, init_symlink);

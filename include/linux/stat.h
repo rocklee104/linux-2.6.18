@@ -8,7 +8,7 @@
 #endif
 
 #if defined(__KERNEL__) || !defined(__GLIBC__) || (__GLIBC__ < 2)
-//文件格式
+//文件类型mask
 #define S_IFMT  00170000
 #define S_IFSOCK 0140000
 //symbolic link

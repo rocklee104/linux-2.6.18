@@ -1045,6 +1045,7 @@ void generic_delete_inode(struct inode *inode)
 {
 	struct super_operations *op = inode->i_sb->s_op;
 
+	//与sb的链表解除关系
 	list_del_init(&inode->i_list);
 	list_del_init(&inode->i_sb_list);
 	inode->i_state|=I_FREEING;
@@ -1116,8 +1117,10 @@ static void generic_forget_inode(struct inode *inode)
 void generic_drop_inode(struct inode *inode)
 {
 	if (!inode->i_nlink)
+		//如果硬链接数为0
 		generic_delete_inode(inode);
 	else
+		//如果硬链接数不为0
 		generic_forget_inode(inode);
 }
 
@@ -1160,9 +1163,11 @@ void iput(struct inode *inode)
 
 		BUG_ON(inode->i_state == I_CLEAR);
 
+		//如果sb有put inode的方法,就调用sb的
 		if (op && op->put_inode)
 			op->put_inode(inode);
 
+		//如果没有其他地方引用这个inode,就释放inode资源
 		if (atomic_dec_and_lock(&inode->i_count, &inode_lock))
 			iput_final(inode);
 	}
