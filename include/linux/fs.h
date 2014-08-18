@@ -1243,27 +1243,47 @@ extern ssize_t vfs_writev(struct file *, const struct iovec __user *,
  * without the big kernel lock held in all filesystems.
  */
 struct super_operations {
+	/* 给定的超级块下创建和初始化一个新的索引节点对象；*/
    	struct inode *(*alloc_inode)(struct super_block *sb);
+	/* 用于释放给定的索引节点；*/
 	void (*destroy_inode)(struct inode *);
-
+	//传进来的inode的i_ino字段保存了一个inode编号,底层实现的例程将会读取该值,
+	//从存储介质中取出有关数据,并填充inode对象剩余的字段
 	void (*read_inode) (struct inode *);
-  
+    /* VFS在索引节点脏（被修改）时会调用此函数。
+	日志文件系统（如ext3,ext4）执行该函数进行日志更新；*/
    	void (*dirty_inode) (struct inode *);
+	/* 用于将给定的索引节点写入磁盘,wait参数指明写操作是否需要同步*/
 	int (*write_inode) (struct inode *, int);
+	//在进程结束数据使用时,put_inode将inode使用计数器减1. 
 	void (*put_inode) (struct inode *);
+	/* 在最后一个指向索引节点的引用被释放后，VFS会调用该函数。
+	VFS只需要简单地删除这个索引节点后,普通Uinx文件系统就不会定义这个函数了；*/
 	void (*drop_inode) (struct inode *);
+	/* 用于从内存和磁盘上删除给定的索引节点；*/
 	void (*delete_inode) (struct inode *);
+	/* 在卸载文件系统时由VFS调用，用来释放超级块,调用者必须一直持有s_lock锁；*/
 	void (*put_super) (struct super_block *);
+	/* 用给定的超级块更新磁盘上的超级块。
+	VFS通过该函数对内存中的超级块和磁盘中的超级块进行同步,调用者必须一直持有s_lock锁；*/
 	void (*write_super) (struct super_block *);
+	/* 使文件系统的数据元与磁盘上的文件系统同步,wait参数指定操作是否同步*/
 	int (*sync_fs)(struct super_block *sb, int wait);
 	void (*write_super_lockfs) (struct super_block *);
 	void (*unlockfs) (struct super_block *);
+	/* VFS通过调用该函数获取文件系统状态,指定文件系统的统计信息将放置在statfs中；*/
 	int (*statfs) (struct dentry *, struct kstatfs *);
+	/* 当指定新的安装选项重新安装文件系统时,VFS会调用该函数。调用者必须一直持有s_lock锁；*/
 	int (*remount_fs) (struct super_block *, int *, char *);
+	/* VFS调用该函数释放索引节点,并清空包含相关数据的所有页面；*/
 	void (*clear_inode) (struct inode *);
+	//仅用于网络文件系统(nfs/cifs/9fs)和用户文件系统(fuse).它允许在卸载操作开始前,
+	//与远程文件系统提供者通信.仅在文件系统强制卸载时调用该方法.换句话说,它仅用于MNT_FORCE
+	//强制内核执行umount操作,此时可能仍然有对该文件系统的引用.
 	void (*umount_begin) (struct vfsmount *, int);
-
+	//用于proc文件系统,用于显示文件系统安装的选项.
 	int (*show_options)(struct seq_file *, struct vfsmount *);
+	//用于proc文件系统,用于显示文件系统的统计信息
 	int (*show_stats)(struct seq_file *, struct vfsmount *);
 
 	ssize_t (*quota_read)(struct super_block *, int, char *, size_t, loff_t);

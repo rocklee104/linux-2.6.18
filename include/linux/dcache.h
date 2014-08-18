@@ -149,7 +149,7 @@ struct dentry_operations {
 	int (*d_revalidate)(struct dentry *, struct nameidata *);
 	//计算散列值
 	int (*d_hash) (struct dentry *, struct qstr *);
-	//比较两个dentry对象的文件名
+	//比较两个dentry对象的文件名,比如fat fs不区分大小写,就不能用普通的strcmp比较
 	int (*d_compare) (struct dentry *, struct qstr *, struct qstr *);
 	//d_count == 0时调用
 	int (*d_delete)(struct dentry *);

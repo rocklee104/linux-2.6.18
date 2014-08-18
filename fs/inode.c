@@ -1064,6 +1064,7 @@ void generic_delete_inode(struct inode *inode)
 		 * internally */
 		delete(inode);
 	} else {
+		//释放inode的页面资源
 		truncate_inode_pages(&inode->i_data, 0);
 		clear_inode(inode);
 	}
@@ -1072,6 +1073,7 @@ void generic_delete_inode(struct inode *inode)
 	spin_unlock(&inode_lock);
 	wake_up_inode(inode);
 	BUG_ON(inode->i_state != I_CLEAR);
+	//完全删除了一个inode 
 	destroy_inode(inode);
 }
 

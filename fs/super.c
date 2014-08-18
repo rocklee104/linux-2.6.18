@@ -699,6 +699,7 @@ static void bdev_uevent(struct block_device *bdev, enum kobject_action action)
 	}
 }
 
+//挂载块设备上的文件系统
 int get_sb_bdev(struct file_system_type *fs_type,
 	int flags, const char *dev_name, void *data,
 	int (*fill_super)(struct super_block *, void *, int),
@@ -781,6 +782,7 @@ void kill_block_super(struct super_block *sb)
 
 EXPORT_SYMBOL(kill_block_super);
 
+//挂载无设备文件系统
 int get_sb_nodev(struct file_system_type *fs_type,
 	int flags, void *data,
 	int (*fill_super)(struct super_block *, void *, int),
@@ -814,6 +816,7 @@ static int compare_single(struct super_block *s, void *p)
 	return 1;
 }
 
+//挂载在挂载点之间共享实例的文件系统
 int get_sb_single(struct file_system_type *fs_type,
 	int flags, void *data,
 	int (*fill_super)(struct super_block *, void *, int),
