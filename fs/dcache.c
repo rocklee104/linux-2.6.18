@@ -376,7 +376,7 @@ static void prune_one_dentry(struct dentry * dentry)
 
 	//从hash表中删除
 	__d_drop(dentry);
-	//从目录树中删除
+	//从子目录链表中删除
 	list_del(&dentry->d_u.d_child);
 	dentry_stat.nr_dentry--;	/* For d_free, below */
 	dentry_iput(dentry);
@@ -425,8 +425,10 @@ static void prune_dcache(int count, struct super_block *sb)
 				tmp = tmp->prev;
 			}
 		}
+		//如果dentry_unused中没有任何dentry
 		if (tmp == &dentry_unused)
 			break;
+		//从dentry_unused中取出tmp
 		list_del_init(tmp);
 		prefetch(dentry_unused.prev);
  		dentry_stat.nr_unused--;
@@ -443,6 +445,7 @@ static void prune_dcache(int count, struct super_block *sb)
 			continue;
 		}
 		/* If the dentry was recently referenced, don't free it. */
+		//最近操作过计数,将其重新加入dentry_unused
 		if (dentry->d_flags & DCACHE_REFERENCED) {
 			dentry->d_flags &= ~DCACHE_REFERENCED;
  			list_add(&dentry->d_lru, &dentry_unused);
@@ -626,6 +629,7 @@ positive:
  * drop the lock and return early due to latency
  * constraints.
  */
+ //只查找没有子目录的dentry,因为如果一个dentry有子目录,其dentry->d_count肯定不为0
 static int select_parent(struct dentry * parent)
 {
 	struct dentry *this_parent = parent;
@@ -641,6 +645,7 @@ resume:
 		struct dentry *dentry = list_entry(tmp, struct dentry, d_u.d_child);
 		next = tmp->next;
 
+		//将dentry从dentry_unused中取出来
 		if (!list_empty(&dentry->d_lru)) {
 			dentry_stat.nr_unused--;
 			list_del_init(&dentry->d_lru);
@@ -649,6 +654,7 @@ resume:
 		 * move only zero ref count dentries to the end 
 		 * of the unused list for prune_dcache
 		 */
+		 //如果dentry->d_count为0, 则将dentry插入dentry_unused尾部
 		if (!atomic_read(&dentry->d_count)) {
 			list_add_tail(&dentry->d_lru, &dentry_unused);
 			dentry_stat.nr_unused++;
@@ -660,6 +666,7 @@ resume:
 		 * ensures forward progress). We'll be coming back to find
 		 * the rest.
 		 */
+		 //如果找到目标dentry, 并且need_resched为真,就退出,下次进来的时候继续
 		if (found && need_resched())
 			goto out;
 
@@ -1640,6 +1647,7 @@ int is_subdir(struct dentry * new_dentry, struct dentry * old_dentry)
 	return result;
 }
 
+//将文件系统中的所有dentry的引用计数减1
 void d_genocide(struct dentry *root)
 {
 	struct dentry *this_parent = root;
@@ -1656,13 +1664,17 @@ resume:
 		if (d_unhashed(dentry)||!dentry->d_inode)
 			continue;
 		if (!list_empty(&dentry->d_subdirs)) {
+			//向目录树的子节点移动
 			this_parent = dentry;
 			goto repeat;
 		}
+		//对无子节点的dentry引用计数减一
 		atomic_dec(&dentry->d_count);
 	}
+	//子节点处理完成,父节点移向同级节点
 	if (this_parent != root) {
 		next = this_parent->d_u.d_child.next;
+		//对有子节点的dentry引用计数减一
 		atomic_dec(&this_parent->d_count);
 		this_parent = this_parent->d_parent;
 		goto resume;
