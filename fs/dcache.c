@@ -1682,7 +1682,7 @@ int is_subdir(struct dentry * new_dentry, struct dentry * old_dentry)
 	return result;
 }
 
-//将文件系统中的所有dentry的引用计数减1
+//将文件系统中的所有dentry的引用计数减1,这是因为初始化dentry的时候d_count=1
 void d_genocide(struct dentry *root)
 {
 	struct dentry *this_parent = root;

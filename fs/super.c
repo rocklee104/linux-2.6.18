@@ -247,6 +247,7 @@ void generic_shutdown_super(struct super_block *sb)
 		shrink_dcache_parent(root);
         //释放在lru中,super block为sb的目录资源
 		shrink_dcache_sb(sb);
+		//这里对root的引用计数减一是因为root是个目录,d_count初始化为2?
 		dput(root);
 		fsync_super(sb);
 		lock_super(sb);
