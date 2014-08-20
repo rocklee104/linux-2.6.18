@@ -40,6 +40,7 @@ struct qstr {
 
 struct dentry_stat_t {
 	int nr_dentry;
+	//dentry_unused中成员的个数
 	int nr_unused;
 	int age_limit;          /* age in seconds */
 	int want_pages;         /* pages requested by system */
@@ -151,7 +152,7 @@ struct dentry_operations {
 	int (*d_hash) (struct dentry *, struct qstr *);
 	//比较两个dentry对象的文件名,比如fat fs不区分大小写,就不能用普通的strcmp比较
 	int (*d_compare) (struct dentry *, struct qstr *, struct qstr *);
-	//d_count == 0时调用
+	//d_count == 0时调用,成功返回1
 	int (*d_delete)(struct dentry *);
 	void (*d_release)(struct dentry *);
     //将一个不再使用的dentry中的inode释放

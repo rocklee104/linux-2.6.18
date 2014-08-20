@@ -234,6 +234,8 @@ static int grab_super(struct super_block *s)
  *	and release aforementioned objects.  Note: dentries and inodes _are_
  *	taken care of and do not need specific handling.
  */
+ //generic_shutdown_super处理了在shutdown sb时所有的独立于特定文件系统的工作.
+ //而典型的->kill_sb处理特定于文件系统的资源释放工作,不仅仅关于sb.
 void generic_shutdown_super(struct super_block *sb)
 {
 	struct dentry *root = sb->s_root;
@@ -241,13 +243,16 @@ void generic_shutdown_super(struct super_block *sb)
 
 	if (root) {
 		sb->s_root = NULL;
+		//释放lru中,root下的目录资源
 		shrink_dcache_parent(root);
+        //释放在lru中,super block为sb的目录资源
 		shrink_dcache_sb(sb);
 		dput(root);
 		fsync_super(sb);
 		lock_super(sb);
 		sb->s_flags &= ~MS_ACTIVE;
 		/* bad name - it should be evict_inodes() */
+		//删除指向sb并且i_count==0的inode
 		invalidate_inodes(sb);
 		lock_kernel();
 

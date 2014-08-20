@@ -68,6 +68,7 @@ static struct hlist_head *dentry_hashtable __read_mostly;
 static LIST_HEAD(dentry_unused);
 
 /* Statistics gathering. */
+//dentry_stat.nr_unused用于记录dentry_unused中元素的个数
 struct dentry_stat_t dentry_stat = {
 	.age_limit = 45,
 };
@@ -85,6 +86,8 @@ static void d_callback(struct rcu_head *head)
  * no dcache_lock, please.  The caller must decrement dentry_stat.nr_dentry
  * inside dcache_lock.
  */
+
+//释放dentry在kmem_cache中的空间 
 static void d_free(struct dentry *dentry)
 {
 	if (dentry->d_op && dentry->d_op->d_release)
@@ -134,6 +137,7 @@ static void dentry_iput(struct dentry * dentry)
  * on the compiler to always get this right (gcc generally doesn't).
  * Real recursion would eat up our stack space.
  */
+ //尾递归是极其重要的，不用尾递归，函数的堆栈耗用难以估量，需要保存很多中间函数的堆栈
 
 /*
  * dput - release a dentry
@@ -155,11 +159,13 @@ void dput(struct dentry *dentry)
 repeat:
 	if (atomic_read(&dentry->d_count) == 1)
 		might_sleep();
+	/* 这里只对dentry->d_count做减1操作，如果减1后dentry->d_count不为0，那立刻返回。*/
 	if (!atomic_dec_and_lock(&dentry->d_count, &dcache_lock))
 		return;
 
 	spin_lock(&dentry->d_lock);
 	if (atomic_read(&dentry->d_count)) {
+		//因为在atomic_dec_and_lock中减一等于0了,这里不应该进来
 		spin_unlock(&dentry->d_lock);
 		spin_unlock(&dcache_lock);
 		return;
@@ -168,15 +174,20 @@ repeat:
 	/*
 	 * AV: ->d_delete() is _NOT_ allowed to block now.
 	 */
+	/* 如果该dentry有自己的d_delete()函数，那直接调用它，指向完之后，调到unhash_it。*/
 	if (dentry->d_op && dentry->d_op->d_delete) {
 		if (dentry->d_op->d_delete(dentry))
+			//d_delete操作成功返回1
 			goto unhash_it;
 	}
 	/* Unreachable? Get rid of it */
  	if (d_unhashed(dentry))
+		//已经有了DCACHE_UNHASHED标志,这时候就需要彻底删除
 		goto kill_it;
   	if (list_empty(&dentry->d_lru)) {
+		//如果此dentry没在lru list中,并且没有DCACHE_UNHASHED标志,表示这个dentry最近被使用过
   		dentry->d_flags |= DCACHE_REFERENCED;
+		//将其加入dentry_unused
   		list_add(&dentry->d_lru, &dentry_unused);
   		dentry_stat.nr_unused++;
   	}
@@ -194,9 +205,11 @@ kill_it: {
 		 * delete it from there
 		 */
   		if (!list_empty(&dentry->d_lru)) {
+			//如果dentry已经在lru list上了, 就将其从lru list上删除
   			list_del(&dentry->d_lru);
   			dentry_stat.nr_unused--;
   		}
+        //从目录树中删除
   		list_del(&dentry->d_u.d_child);
 		dentry_stat.nr_dentry--;	/* For d_free, below */
 		/*drops the locks, at that point nobody can reach this dentry */
@@ -365,7 +378,7 @@ restart:
 
 /*
  * Throw away a dentry - free the inode, dput the parent.  This requires that
- * the LRU list has already been removed.
+ * the LRU list has already been removed.在prune_dcache将dentry从lru中删除
  *
  * Called with dcache_lock, drops it and then regains.
  * Called with dentry->d_lock held, drops it.
@@ -379,10 +392,13 @@ static void prune_one_dentry(struct dentry * dentry)
 	//从子目录链表中删除
 	list_del(&dentry->d_u.d_child);
 	dentry_stat.nr_dentry--;	/* For d_free, below */
+	//释放inode
 	dentry_iput(dentry);
 	parent = dentry->d_parent;
+	//释放dentry空间
 	d_free(dentry);
 	if (parent != dentry)
+		//由于一个子目录被删除,父目录的引用必然要减一
 		dput(parent);
 	spin_lock(&dcache_lock);
 }
@@ -412,12 +428,14 @@ static void prune_dcache(int count, struct super_block *sb)
 
 		cond_resched_lock(&dcache_lock);
 
+		//从dentry_unused的尾部向头部搜索,尾部保存的是最近最少使用的元素
 		tmp = dentry_unused.prev;
 		if (sb) {
 			/* Try to find a dentry for this sb, but don't try
 			 * too hard, if they aren't near the tail they will
 			 * be moved down again soon
 			 */
+			//如果指定了sb, 就在dentry_unused中从尾部找到以第一指向这个sb的dentry
 			int skip = count;
 			while (skip && tmp != &dentry_unused &&
 			    list_entry(tmp, struct dentry, d_lru)->d_sb != sb) {
@@ -448,6 +466,7 @@ static void prune_dcache(int count, struct super_block *sb)
 		//最近操作过计数,将其重新加入dentry_unused
 		if (dentry->d_flags & DCACHE_REFERENCED) {
 			dentry->d_flags &= ~DCACHE_REFERENCED;
+			//新加入的成员,头插dentry_unused
  			list_add(&dentry->d_lru, &dentry_unused);
  			dentry_stat.nr_unused++;
  			spin_unlock(&dentry->d_lock);
@@ -464,6 +483,7 @@ static void prune_dcache(int count, struct super_block *sb)
 		 * If this dentry is for "my" filesystem, then I can prune it
 		 * without taking the s_umount lock (I already hold it).
 		 */
+		//如果是卸载时调用了此函数,在do_mount中已经用了s_umount加锁,这里不需要获取s_umount
 		if (sb && dentry->d_sb == sb) {
 			prune_one_dentry(dentry);
 			continue;
@@ -477,6 +497,7 @@ static void prune_dcache(int count, struct super_block *sb)
 		 * (Take a local copy of s_umount to avoid a use-after-free of
 		 * `dentry').
 		 */
+		//如果没在卸载的时候使用,比如在vfs_caches_init中,这时候没有指定sb,就需要s_umount 
 		s_umount = &dentry->d_sb->s_umount;
 		if (down_read_trylock(s_umount)) {
 			if (dentry->d_sb->s_root != NULL) {
@@ -535,7 +556,7 @@ void shrink_dcache_sb(struct super_block * sb)
 
 		if (dentry->d_sb != sb)
 			continue;
-		//将特定的sb移动到dentry_unused的头部
+		//将特定的sb移动到dentry_unused的头部,移动到头部方便第二次使用list_for_each_safe遍历
 		list_move(tmp, &dentry_unused);
 	}
 
@@ -555,7 +576,8 @@ repeat:
 			spin_unlock(&dentry->d_lock);
 			continue;
 		}
-		
+
+		//如果引用计数为0, 则被释放
 		prune_one_dentry(dentry);
 		cond_resched_lock(&dcache_lock);
 		goto repeat;
@@ -702,7 +724,9 @@ void shrink_dcache_parent(struct dentry * parent)
 {
 	int found;
 
+	//将dentry_unused中的d_count为0的dentry放到list tail, 统计d_count为0的dentry的个数
 	while ((found = select_parent(parent)) != 0)
+		//将d_count为0的dentry,并且d_sb是parent->d_sb的dentry删除
 		prune_dcache(found, parent->d_sb);
 }
 
@@ -1233,6 +1257,15 @@ out:
  * it to be deleted later when it has no users
  */
  
+ /*当一个文件被删除时,我们有2种选择:*/
+  /*- 将这个dentry变成negtive状态(没有具体inode)*/
+  /*- 将这个dentry变成unhash状态(在dentry_hash中删除)并且释放.*/
+
+  /*通常情况下,我们只是想要将dentry变成negtive状态,但是如果有其他*/
+  /*地方真正使用这个dentry或者我们需要操作的inode不能被释放.我们只能*/
+  /*退一步,暂时不删除这个dentry, 仅仅将其从hash队列中删除,当没有任何*/
+  /*地方使用这个dentry时,再将其删除*/
+ 
 /**
  * d_delete - delete a dentry
  * @dentry: The dentry to delete
@@ -1251,6 +1284,7 @@ void d_delete(struct dentry * dentry)
 	spin_lock(&dentry->d_lock);
 	isdir = S_ISDIR(dentry->d_inode->i_mode);
 	if (atomic_read(&dentry->d_count) == 1) {
+		//解除对inode的关联,并调用iput对inode的引用计数减一
 		dentry_iput(dentry);
 		fsnotify_nameremove(dentry, isdir);
 
@@ -1259,6 +1293,7 @@ void d_delete(struct dentry * dentry)
 		return;
 	}
 
+	//unhash this dentry,由于本函数调用了spin_lock(&dcache_lock),故此处不用d_drop
 	if (!d_unhashed(dentry))
 		__d_drop(dentry);
 

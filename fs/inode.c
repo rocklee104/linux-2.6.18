@@ -255,19 +255,25 @@ void __iget(struct inode * inode)
 void clear_inode(struct inode *inode)
 {
 	might_sleep();
+	//释放inode->i_data数据
 	invalidate_inode_buffers(inode);
        
 	BUG_ON(inode->i_data.nrpages);
 	BUG_ON(!(inode->i_state & I_FREEING));
 	BUG_ON(inode->i_state & I_CLEAR);
+	//如果有其他进程操作此inode,就等待其完成
 	wait_on_inode(inode);
 	DQUOT_DROP(inode);
+	//调用具体文件系统的clear_inode
 	if (inode->i_sb && inode->i_sb->s_op->clear_inode)
 		inode->i_sb->s_op->clear_inode(inode);
+	//如果此inode是一个block device
 	if (inode->i_bdev)
 		bd_forget(inode);
+	//如果此inode是一个char device
 	if (inode->i_cdev)
 		cd_forget(inode);
+	
 	inode->i_state = I_CLEAR;
 }
 
@@ -291,19 +297,23 @@ static void dispose_list(struct list_head *head)
 		list_del(&inode->i_list);
 
 		if (inode->i_data.nrpages)
+			//清除inode->i_data数据
 			truncate_inode_pages(&inode->i_data, 0);
 		clear_inode(inode);
 
 		spin_lock(&inode_lock);
 		hlist_del_init(&inode->i_hash);
+		//从super_block->s_inodes为表头的链表中删除
 		list_del_init(&inode->i_sb_list);
 		spin_unlock(&inode_lock);
 
+		//通知资源删除完成,就剩一个空的inode
 		wake_up_inode(inode);
 		destroy_inode(inode);
 		nr_disposed++;
 	}
 	spin_lock(&inode_lock);
+	//inode的统计技术减去刚才释放的个数
 	inodes_stat.nr_inodes -= nr_disposed;
 	spin_unlock(&inode_lock);
 }
@@ -311,6 +321,8 @@ static void dispose_list(struct list_head *head)
 /*
  * Invalidate all inodes for a device.
  */
+ //返回正在使用的inode的个数, 为使用的inode保存在dispose为head的链表中
+ //并将inode->i_state置为I_FREEING
 static int invalidate_list(struct list_head *head, struct list_head *dispose)
 {
 	struct list_head *next;
@@ -333,6 +345,7 @@ static int invalidate_list(struct list_head *head, struct list_head *dispose)
 		if (tmp == head)
 			break;
 		inode = list_entry(tmp, struct inode, i_sb_list);
+		//回收inode的buffer
 		invalidate_inode_buffers(inode);
 		if (!atomic_read(&inode->i_count)) {
 			list_move(&inode->i_list, dispose);
@@ -340,6 +353,7 @@ static int invalidate_list(struct list_head *head, struct list_head *dispose)
 			count++;
 			continue;
 		}
+		//如果inode的引用计数大于0
 		busy = 1;
 	}
 	/* only unused inodes may be cached with i_count zero */
@@ -363,9 +377,11 @@ int invalidate_inodes(struct super_block * sb)
 	mutex_lock(&iprune_mutex);
 	spin_lock(&inode_lock);
 	inotify_unmount_inodes(&sb->s_inodes);
+	//将引用计数为0的inode加入throw_away链表
 	busy = invalidate_list(&sb->s_inodes, &throw_away);
 	spin_unlock(&inode_lock);
 
+	//清除throw_away链表中的inode
 	dispose_list(&throw_away);
 	mutex_unlock(&iprune_mutex);
 

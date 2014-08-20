@@ -521,8 +521,8 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
 
 struct inode {
 	struct hlist_node	i_hash;
-	//链表元素,用于将inode存储在一个链表中,链表头是super_block->s_dirty
-	//super_block->s_io, 和super_block->s_more_io(2.6.24)也使用了此元素
+	//用于链接描述inode当前状态的链表,当创建一个新的inode的时候,
+	//成员i_list要链接到inode_in_use这个链表，表示inode处于使用状态
 	struct list_head	i_list;
 	//链表元素,链表头是super_block->s_inodes
 	struct list_head	i_sb_list;
