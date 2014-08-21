@@ -182,8 +182,10 @@ int kobject_add(struct kobject * kobj)
 		spin_lock(&kobj->kset->list_lock);
 
 		if (!parent)
+            //如果不存在parent就以kset->kobj为parent
 			parent = kobject_get(&kobj->kset->kobj);
 
+        //尾插入kset->list
 		list_add_tail(&kobj->entry,&kobj->kset->list);
 		spin_unlock(&kobj->kset->list_lock);
 	}
@@ -453,6 +455,7 @@ void kset_init(struct kset * k)
 
 int kset_add(struct kset * k)
 {
+    //当kset->kobj没有父节点及没有kset,并且kset有subsys,k->kobj的父节点就为k->subsys->kset.kobj
 	if (!k->kobj.parent && !k->kobj.kset && k->subsys)
 		k->kobj.parent = &k->subsys->kset.kobj;
 

@@ -152,7 +152,7 @@ static int create_dir(struct kobject * k, struct dentry * p,
 			//返回0,表示name为n的节点不存在
   			error = -EEXIST;
   		else
-			//创建目录
+			//创建目录, 填充dentry->d_fsdata
 			error = sysfs_make_dirent(p->d_fsdata, *d, k, mode,
 								SYSFS_DIR);
 		if (!error) {
@@ -203,6 +203,7 @@ int sysfs_create_dir(struct kobject * kobj)
 	BUG_ON(!kobj);
 
 	if (kobj->parent)
+        //如果有parent, 就获取parent的dentry
 		parent = kobj->parent->dentry;
 	else if (sysfs_mount && sysfs_mount->mnt_sb)
 		//如果kobject没有父节点,就使用sysfs的root
@@ -218,6 +219,10 @@ int sysfs_create_dir(struct kobject * kobj)
 
 /* attaches attribute's sysfs_dirent to the dentry corresponding to the
  * attribute file
+ */
+/**
+ * sd: 文件的sysfs_dirent对象
+ * dentry: 文件的dentry对象
  */
  //设置dentry的属性,并把dentry加入hashtable
 static int sysfs_attach_attr(struct sysfs_dirent * sd, struct dentry * dentry)
