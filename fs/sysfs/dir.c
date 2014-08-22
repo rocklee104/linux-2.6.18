@@ -146,6 +146,7 @@ static int create_dir(struct kobject * k, struct dentry * p,
 
 	mutex_lock(&p->d_inode->i_mutex);
 	//通过sysfs_create_dir传来的*d == NULL, 这里通过lookup_one_len分配dentry
+    //如果*d是一个目录,sysfs就不会为其分配一个inode
 	*d = lookup_one_len(n, p, strlen(n));
 	if (!IS_ERR(*d)) {
  		if (sysfs_dirent_exist(p->d_fsdata, n))
@@ -156,7 +157,8 @@ static int create_dir(struct kobject * k, struct dentry * p,
 			error = sysfs_make_dirent(p->d_fsdata, *d, k, mode,
 								SYSFS_DIR);
 		if (!error) {
-			//如果目录的dentry分配成功,就为其分配一个inode
+            //如果目录的dentry分配成功,就为其分配一个inode,指定了inode的fop为sysfs_dir_operations
+            //这样使用ls就能看到目录了
 			error = sysfs_create(*d, mode, init_dir);
 			if (!error) {
 				//每创建一个子目录,父目录的硬链接数+1 
@@ -175,6 +177,7 @@ static int create_dir(struct kobject * k, struct dentry * p,
 			}
 			d_drop(*d);
 		}
+        //目录创建完成后就应该释放引用
 		dput(*d);
 	} else
 		error = PTR_ERR(*d);
@@ -287,7 +290,7 @@ static struct dentry * sysfs_lookup(struct inode *dir, struct dentry *dentry,
 
 	//遍历dentry的同级目录
 	list_for_each_entry(sd, &parent_sd->s_children, s_sibling) {
-		//如果sd表示的是一个文件
+		//如果sd表示的是目录(不是文件), 就什么都不做.
 		if (sd->s_type & SYSFS_NOT_PINNED) {
 			const unsigned char * name = sysfs_get_name(sd);
 

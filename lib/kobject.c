@@ -157,7 +157,7 @@ static void unlink(struct kobject * kobj)
  *	kobject_add - add an object to the hierarchy.
  *	@kobj:	object.
  */
-
+//在sysfs中创建目录
 int kobject_add(struct kobject * kobj)
 {
 	int error = 0;
@@ -190,16 +190,19 @@ int kobject_add(struct kobject * kobj)
 		spin_unlock(&kobj->kset->list_lock);
 	}
 	kobj->parent = parent;
-
+	
+	//在sysfs中创建目录
 	error = create_dir(kobj);
 	if (error) {
 		/* unlink does the kobject_put() for us */
 		unlink(kobj);
 		if (parent)
+			//因为一进这个函数的时候就已经kobject_get了
 			kobject_put(parent);
 
 		/* be noisy on error issues */
 		if (error == -EEXIST)
+			//欲创建的目录已经存在
 			printk("kobject_add failed for %s with -EEXIST, "
 			       "don't try to register things with the "
 			       "same name in the same directory.\n",
@@ -456,6 +459,8 @@ void kset_init(struct kset * k)
 int kset_add(struct kset * k)
 {
     //当kset->kobj没有父节点及没有kset,并且kset有subsys,k->kobj的父节点就为k->subsys->kset.kobj
+	//在kobject_add中,如果kobject有parent,就使用其parent, 如果没有就用kset->kobject作为其parent
+	//所以在当前情况下要判断此kobject是否有subsys
 	if (!k->kobj.parent && !k->kobj.kset && k->subsys)
 		k->kobj.parent = &k->subsys->kset.kobj;
 
@@ -533,6 +538,7 @@ int subsystem_register(struct subsystem * s)
 {
 	int error;
 
+	//最终调用了kobject_init
 	subsystem_init(s);
 	pr_debug("subsystem %s: registering\n",s->kset.kobj.name);
 
