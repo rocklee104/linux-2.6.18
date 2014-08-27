@@ -52,6 +52,7 @@ void blkdev_show(struct seq_file *f, off_t offset)
 #endif /* CONFIG_PROC_FS */
 
 //获取一个设备号,其功能和字符设备register_chrdev_region一致
+//注册完成后通过/proc/devices能够看到这个块设备驱动
 int register_blkdev(unsigned int major, const char *name)
 {
 	struct blk_major_name **n, *p;
@@ -86,14 +87,16 @@ int register_blkdev(unsigned int major, const char *name)
 	p->major = major;
 	strlcpy(p->name, name, sizeof(p->name));
 	p->next = NULL;
+    //在手动指定major的情况下,major可能超过255
 	index = major_to_index(major);
 
 	for (n = &major_names[index]; *n; n = &(*n)->next) {
-		//手动分配设备号的才会进入循环,例如设备号2和设备号257在同一链表中
+		//自动分配的major不会大于255, 例如设备号2和设备号257在同一链表中
 		if ((*n)->major == major)
 			break;
 	}
 	if (!*n)
+        //如果在链表中没找到major相同的项,就将p加入链表
 		*n = p;
 	else
 		ret = -EBUSY;
@@ -144,11 +147,12 @@ static struct kobj_map *bdev_map;
  * range must be nonzero
  * The hash chain is sorted on range, so that subranges can override.
  */
- //将块设备注册到系统中,功能与字符设备的cdev_add一致
+ //将块设备注册到系统中,功能与字符设备的cdev_add一致，这里的range是指分区的个数
 void blk_register_region(dev_t dev, unsigned long range, struct module *module,
 			 struct kobject *(*probe)(dev_t, int *, void *),
 			 int (*lock)(dev_t, void *), void *data)
 {
+    //在bdev_map增加设备节点
 	kobj_map(bdev_map, dev, range, module, probe, lock, data);
 }
 
@@ -161,6 +165,7 @@ void blk_unregister_region(dev_t dev, unsigned long range)
 
 EXPORT_SYMBOL(blk_unregister_region);
 
+//返回data中的kobject
 static struct kobject *exact_match(dev_t dev, int *part, void *data)
 {
 	struct gendisk *p = data;
@@ -300,10 +305,12 @@ static struct kobject *base_probe(dev_t dev, int *part, void *data)
 	return NULL;
 }
 
+//block子系统的初始化
 static int __init genhd_device_init(void)
 {
 	bdev_map = kobj_map_init(base_probe, &block_subsys_lock);
 	blk_dev_init();
+    //block_subsys由decl_subsys定义
 	subsystem_register(&block_subsys);
 	return 0;
 }
@@ -635,7 +642,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 		}
 		
 		disk->minors = minors;
-		//加入block_subsys
+		//加入block_subsys,将disk的kobj.kset指向block_subsys的kset
 		kobj_set_kset_s(disk,block_subsys);
 		kobject_init(&disk->kobj);
 		rand_initialize_disk(disk);
@@ -646,6 +653,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 EXPORT_SYMBOL(alloc_disk);
 EXPORT_SYMBOL(alloc_disk_node);
 
+//获取disk的kobject
 struct kobject *get_disk(struct gendisk *disk)
 {
 	struct module *owner;

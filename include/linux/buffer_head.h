@@ -56,11 +56,15 @@ typedef void (bh_end_io_t)(struct buffer_head *bh, int uptodate);
  */
 struct buffer_head {
 	unsigned long b_state;		/* buffer state bitmap (see above) */
+    //块缓冲区所在页框的页描述符地址
 	struct buffer_head *b_this_page;/* circular list of page's buffers */
 	struct page *b_page;		/* the page this bh is mapped to */
 
+    //逻辑块号
 	sector_t b_blocknr;		/* start block number */
 	size_t b_size;			/* size of mapping */
+    //如果页框位于高端内存中,那么b_data字段存放页中块缓冲区的偏移量
+    //否则,b_data存放块缓冲区本身的起始线性地址
 	char *b_data;			/* pointer to data within the page */
 
 	struct block_device *b_bdev;

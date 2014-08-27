@@ -55,8 +55,11 @@
  * was unsigned short, but we might as well be ready for > 64kB I/O pages
  */
 struct bio_vec {
+	//指向段的页框中页描述符的指针
 	struct page	*bv_page;
+	//段的字节长度
 	unsigned int	bv_len;
+	//页框中段数据的偏移量
 	unsigned int	bv_offset;
 };
 
@@ -70,27 +73,35 @@ typedef void (bio_destructor_t) (struct bio *);
  * stacking drivers)
  */
 struct bio {
+	//块io操作的第一个磁盘分区
 	sector_t		bi_sector;
+	//链接到请求队列的下一个bio
 	struct bio		*bi_next;	/* request queue link */
 	struct block_device	*bi_bdev;
+	//bio的状态标志
 	unsigned long		bi_flags;	/* status, command, etc */
+	//io操作标志
 	unsigned long		bi_rw;		/* bottom bits READ/WRITE,
 						 * top bits priority
 						 */
 
+	//bio_vec数组中段的数目
 	unsigned short		bi_vcnt;	/* how many bio_vec's */
+    //bio_vec数组中段的当前索引
 	unsigned short		bi_idx;		/* current index into bvl_vec */
 
 	/* Number of segments in this BIO after
 	 * physical address coalescing is performed.
 	 */
+	//合并之后bio中物理段的数目
 	unsigned short		bi_phys_segments;
 
 	/* Number of segments after physical and DMA remapping
 	 * hardware coalescing is performed.
 	 */
+    //合并之后bio中硬件段的数目
 	unsigned short		bi_hw_segments;
-
+	//需要传送的字节数
 	unsigned int		bi_size;	/* residual I/O count */
 
 	/*
@@ -98,18 +109,21 @@ struct bio {
 	 * sizes of the first and last virtually mergeable segments
 	 * in this bio
 	 */
+	//硬件段合并算法使用
 	unsigned int		bi_hw_front_size;
+    //硬件段合并算法使用
 	unsigned int		bi_hw_back_size;
-
+	//bio的bio_vec数组中允许的最大段数
 	unsigned int		bi_max_vecs;	/* max bvl_vecs we can hold */
-
+	//指向bio的bio_vec数组中的段的指针
 	struct bio_vec		*bi_io_vec;	/* the actual vec list */
-
+	//bio的io操作结束时调用的方法
 	bio_end_io_t		*bi_end_io;
+	//bio的引用计数器
 	atomic_t		bi_cnt;		/* pin count */
-
+	//通用块层和块设备驱动程序的io完成方法使用的指针
 	void			*bi_private;
-
+	//释放bio时调用的析构方法
 	bio_destructor_t	*bi_destructor;	/* destructor */
 };
 

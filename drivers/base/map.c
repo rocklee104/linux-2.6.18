@@ -68,7 +68,7 @@ int kobj_map(struct kobj_map *domain, dev_t dev, unsigned long range,
 		while (*s && (*s)->range < range)
 			s = &(*s)->next;
 
-		//将p查到s前面,保证range从小到大排列
+		//将p插到s前面,保证range从小到大排列
 		p->next = *s;
 		*s = p;
 	}
@@ -123,7 +123,7 @@ retry:
 		if (p->dev > dev || p->dev + p->range - 1 < dev)
 			continue;
 
-		//p->range最大为~0, 故p->range - 1必须要<best
+		//p->range最大为~0,即0xffffffff, 故p->range - 1必须要<best
 		if (p->range - 1 >= best)
 			break;
 		

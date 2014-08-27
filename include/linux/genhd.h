@@ -82,7 +82,7 @@ struct hd_struct {
 	struct kobject kobj;
 	struct kobject *holder_dir;
 	unsigned ios[2], sectors[2];	/* READs and WRITEs */
-	//partno表示扇区编号
+	//policy为1表示分区只读,partno表示扇区编号
 	int policy, partno;
 };
 
@@ -102,10 +102,12 @@ struct disk_stats {
 };
 	
 struct gendisk {
+    //磁盘主设备号
 	int major;			/* major number of driver */
-	//分区开始的num 
+	//与磁盘关联的第一个次设备号 
 	int first_minor;
 	//主次分区的总个数,如果为1,表示只有主分区,无法分配次分区
+    //与磁盘关联的次设备号范围
 	int minors;                     /* maximum number of minors, =1 for
                                          * disks that can't be partitioned. */
 	char disk_name[32];		/* name of major driver */
@@ -115,26 +117,31 @@ struct gendisk {
 	//就不会向用户空间发送热插拔事件.
 	int part_uevent_suppress;
 	struct block_device_operations *fops;
+    //指向磁盘请求队列的指针
 	struct request_queue *queue;
 	void *private_data;
 	//磁盘容量,单位是扇区
 	sector_t capacity;
-
+    //磁盘类型的标志,GENHD_FL_UP表示磁盘初始化并且可以使用,GENHD_FL_REMOVABLE:如果是可移动磁盘就要设置该标志
 	int flags;
 	//标识该磁盘所属的硬件设备,指针指向驱动模型的一个对象
 	struct device *driverfs_dev;
 	struct kobject kobj;
 	struct kobject *holder_dir;
 	struct kobject *slave_dir;
-
+    //该指针指向这个数据结构记录磁盘中断的定时,由内核内置的随机数发生器使用
 	struct timer_rand_state *random;
 	//如果磁盘是只读的，则置为1（写操作禁止），否则为0
 	int policy;
 
+    //写入磁盘的扇区数计数器,仅为raid使用
 	atomic_t sync_io;		/* RAID */
+    //统计磁盘队列使用情况的时间戳
 	unsigned long stamp;
+    //正在进行的io操作数
 	int in_flight;
 #ifdef	CONFIG_SMP
+    //统计每个cpu使用磁盘的情况
 	struct disk_stats *dkstats;
 #else
 	struct disk_stats dkstats;

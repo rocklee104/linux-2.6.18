@@ -1123,11 +1123,15 @@ typedef int (*filldir_t)(void *, const char *, int, loff_t, ino_t, unsigned);
 struct block_device_operations {
 	int (*open) (struct inode *, struct file *);
 	int (*release) (struct inode *, struct file *);
+	//使用大内核锁的ioctl
 	int (*ioctl) (struct inode *, struct file *, unsigned, unsigned long);
 	long (*unlocked_ioctl) (struct file *, unsigned, unsigned long);
+	//不使用大内核锁的ioctl
 	long (*compat_ioctl) (struct file *, unsigned, unsigned long);
 	int (*direct_access) (struct block_device *, sector_t, unsigned long *);
+	//检查可移动介质是否已经变化
 	int (*media_changed) (struct gendisk *);
+	//检查块设备是否持有有效数据
 	int (*revalidate_disk) (struct gendisk *);
 	int (*getgeo)(struct block_device *, struct hd_geometry *);
 	struct module *owner;
