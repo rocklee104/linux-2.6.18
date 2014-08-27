@@ -363,6 +363,7 @@ static char *make_block_name(struct gendisk *disk)
 	int size;
 	char *s;
 
+	//+1是为了给'\0'腾出空间
 	size = strlen(block_str) + strlen(disk->disk_name) + 1;
 	name = kmalloc(size, GFP_KERNEL);
 	if (!name)
@@ -398,7 +399,15 @@ void register_disk(struct gendisk *disk)
 	int i;
 	struct hd_struct *p;
 	int err;
-
+    
+    /**
+     * ramdisk的初始化流程： 
+     * 1.alloc_disk分配gendisk对象; 
+     * 2.给gendisk赋值，其中包括gendisk->disk_name; 
+     * 3.set_capacity 
+     * 4.add_disk 
+     */
+    //register_disk中，disk->kobj.name还没有名字，必须从disk->disk_name中copy过来
 	strlcpy(disk->kobj.name,disk->disk_name,KOBJ_NAME_LEN);
 	/* ewww... some of these buggers have / in name... */
 	s = strchr(disk->kobj.name, '/');

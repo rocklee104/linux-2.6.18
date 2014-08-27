@@ -29,6 +29,7 @@ extern struct inode_operations sysfs_dir_inode_operations;
 extern struct inode_operations sysfs_symlink_inode_operations;
 
 struct sysfs_symlink {
+	//symbol link name
 	char * link_name;
 	struct kobject * target_kobj;
 };
