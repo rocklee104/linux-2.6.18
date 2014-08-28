@@ -415,7 +415,9 @@ void register_disk(struct gendisk *disk)
 		*s = '!';
 	if ((err = kobject_add(&disk->kobj)))
 		return;
+    //在/sys/block/disk->disk_name/下创建符号连接， 指向/sys/block
 	disk_sysfs_symlinks(disk);
+    //在/sys/block/disk->disk_name/下创建子目录holders,slaves， 指向/sys/block
  	disk_sysfs_add_subdirs(disk);
 
 	/* No minors to use for partitions */
