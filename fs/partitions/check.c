@@ -356,6 +356,7 @@ void add_partition(struct gendisk *disk, int part, sector_t start, sector_t len)
 	disk->part[part-1] = p;
 }
 
+//生成block device name, 对于sda来说，就是block:sda
 static char *make_block_name(struct gendisk *disk)
 {
 	char *name;
@@ -380,11 +381,15 @@ static char *make_block_name(struct gendisk *disk)
 static void disk_sysfs_symlinks(struct gendisk *disk)
 {
 	struct device *target = get_device(disk->driverfs_dev);
-	if (target) {
+    if (target) {
+        //ramdisk因为device对象为null,故不会走到这步
 		char *disk_name = make_block_name(disk);
+        //&disk->kobj是父节点，sysfs_create_link就是在父节点下建立一个名为“device”的子节点指向target->kobj
 		sysfs_create_link(&disk->kobj,&target->kobj,"device");
 		if (disk_name) {
+            //在target->kobj下生成一个symbol link指向disk->kobj
 			sysfs_create_link(&target->kobj,&disk->kobj,disk_name);
+            //disk_name在sysfs_create_link中已经被strcpy过了，这里就可以释放了
 			kfree(disk_name);
 		}
 	}
@@ -415,7 +420,7 @@ void register_disk(struct gendisk *disk)
 		*s = '!';
 	if ((err = kobject_add(&disk->kobj)))
 		return;
-    //在/sys/block/disk->disk_name/下创建符号连接， 指向/sys/block
+    //在/sys/block/disk->disk_name/下创建符号连接subsystem， 指向/sys/block
 	disk_sysfs_symlinks(disk);
     //在/sys/block/disk->disk_name/下创建子目录holders,slaves， 指向/sys/block
  	disk_sysfs_add_subdirs(disk);

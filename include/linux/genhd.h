@@ -430,6 +430,7 @@ extern void blk_register_region(dev_t dev, unsigned long range,
 			void *data);
 extern void blk_unregister_region(dev_t dev, unsigned long range);
 
+//通过struct gendisk对象找到inode,再从inode找到struct block_device对象
 static inline struct block_device *bdget_disk(struct gendisk *disk, int index)
 {
 	return bdget(MKDEV(disk->major, disk->first_minor) + index);

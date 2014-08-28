@@ -240,7 +240,8 @@ void __iget(struct inode * inode)
 	//此inode肯定在inode_unused队列中,将其从inode_used中移动到inode_in_use队列中 
 	if (!(inode->i_state & (I_DIRTY|I_LOCK)))
 		list_move(&inode->i_list, &inode_in_use);
-	
+	//如果没有别的地方使用inode,才能将inode从inode_unused移动到inode_in_use中
+    //这时候inodes_stat.nr_unused必须要减一
 	inodes_stat.nr_unused--;
 }
 
@@ -955,6 +956,12 @@ EXPORT_SYMBOL(ilookup);
  * file system gets to fill it in before unlocking it via unlock_new_inode().
  *
  * Note both @test and @set are called with the inode_lock held, so can't sleep.
+ */
+
+/**
+ * iget5_locked和iget_locked最大的区别是iget5_locked提供了test和set的方法， 
+ * 其中test是用于比较的方法，这样的话寻找inode就不需要知道ino号，提供的test方法来 
+ * 比较inode是否是我们正在寻找的inode 
  */
  //inode number不足以用于唯一标识inode时候使用
  //iget5_locked还会调用set将设备号放入新产生的block_device对象的bd_dev成员中

@@ -523,6 +523,7 @@ struct inode {
 	struct hlist_node	i_hash;
 	//用于链接描述inode当前状态的链表,当创建一个新的inode的时候,
 	//成员i_list要链接到inode_in_use这个链表，表示inode处于使用状态
+	//当i_count为0时，就将inode加入inode_unused链表中
 	struct list_head	i_list;
 	//链表元素,链表头是super_block->s_inodes
 	struct list_head	i_sb_list;

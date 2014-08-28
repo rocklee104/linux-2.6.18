@@ -357,6 +357,15 @@ static int bdev_set(struct inode *inode, void *data)
 static LIST_HEAD(all_bdevs);
 
 //根据设备号获取block device
+/** 此函数首先根据dev_t获取inode: 
+ * 1.从hash表中找到hash值匹配的inode 
+ * 2.从inode获取block device 
+ * 3.再从blockdevice中获取dev_t 
+ * 4.如果这个dev_t对象和传入的data相等，这个inode就是我们要找的inode.
+ * 然后就对这个找到的inode的block device对象赋值。
+ * @param dev
+ * @return struct block_device* 
+ */
 struct block_device *bdget(dev_t dev)
 {
 	struct block_device *bdev;
