@@ -972,6 +972,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 
 	file->f_mapping = bdev->bd_inode->i_mapping;
 	lock_kernel();
+    //函数返回后，part中保存了分区个数
 	disk = get_gendisk(bdev->bd_dev, &part);
 	if (!disk) {
 		unlock_kernel();
@@ -986,6 +987,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 	if (!bdev->bd_openers) {
 		bdev->bd_disk = disk;
 		bdev->bd_contains = bdev;
+        //没有使用fdisk之前，是不会有分区信息的，即没有sda1,sda2等设备
 		if (!part) {
 			//block device是一个分区
 			struct backing_dev_info *bdi;
