@@ -368,16 +368,21 @@ struct address_space;
 struct writeback_control;
 
 struct address_space_operations {
-	int (*writepage)(struct page *page, struct writeback_control *wbc);
+    //写操作（从页写到所有者的磁盘映像）
+    int (*writepage)(struct page *page, struct writeback_control *wbc);
+    //读操作（从所有者的磁盘映像读到页）
 	int (*readpage)(struct file *, struct page *);
+    //如果对所有者页进行的操作已经准备好，则立刻开始io数据传输
 	void (*sync_page)(struct page *);
 
 	/* Write back some dirty pages from this mapping. */
+    //把指定数量的所有者脏页写回磁盘
 	int (*writepages)(struct address_space *, struct writeback_control *);
 
 	/* Set a page dirty.  Return true if this dirtied it */
+    //把所有者的页设为脏页
 	int (*set_page_dirty)(struct page *page);
-
+    //从磁盘中读所有者页的链表
 	int (*readpages)(struct file *filp, struct address_space *mapping,
 			struct list_head *pages, unsigned nr_pages);
 
@@ -385,12 +390,18 @@ struct address_space_operations {
 	 * ext3 requires that a successful prepare_write() call be followed
 	 * by a commit_write() call - they must be balanced
 	 */
-	int (*prepare_write)(struct file *, struct page *, unsigned, unsigned);
+    //为写操作做准备(由磁盘文件系统使用)
+    int (*prepare_write)(struct file *, struct page *, unsigned, unsigned);
+    //完成写操作(由磁盘文件系统使用
 	int (*commit_write)(struct file *, struct page *, unsigned, unsigned);
 	/* Unfortunately this kludge is needed for FIBMAP. Don't use it */
+    //从文件块索引中获取逻辑块号
 	sector_t (*bmap)(struct address_space *, sector_t);
+    //使所有者的页无效（截断文件时使用）
 	void (*invalidatepage) (struct page *, unsigned long);
+    //由日志文件系统使用以准备释放页
 	int (*releasepage) (struct page *, gfp_t);
+    //所有者页的直接io传输（绕过页高速缓存）
 	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
 			loff_t offset, unsigned long nr_segs);
 	struct page* (*get_xip_page)(struct address_space *, sector_t,
@@ -402,21 +413,36 @@ struct address_space_operations {
 
 struct backing_dev_info;
 struct address_space {
+    //指向拥有该对象的inode的指针
 	struct inode		*host;		/* owner: inode, block_device */
+    //拥有者页的radix tree root
 	struct radix_tree_root	page_tree;	/* radix tree of all pages */
+    //保护radix tree的读写锁
 	rwlock_t		tree_lock;	/* and rwlock protecting it */
+    //地址空间中共享内存映射的个数
 	unsigned int		i_mmap_writable;/* count VM_SHARED mappings */
 	struct prio_tree_root	i_mmap;		/* tree of private and shared mappings */
+    //地址空间中非线性内存区的链表
 	struct list_head	i_mmap_nonlinear;/*list VM_NONLINEAR mappings */
+    //保护radix优先搜索树的自旋锁
 	spinlock_t		i_mmap_lock;	/* protect tree, count, list */
+    //截断文件时使用的顺序计数器
 	unsigned int		truncate_count;	/* Cover race condition with truncate */
+    //所有者的页总数
 	unsigned long		nrpages;	/* number of total pages */
+    //最后一次回写操作所作用的页的索引
 	pgoff_t			writeback_index;/* writeback starts here */
+    //对所有者页进行操作的方法
 	const struct address_space_operations *a_ops;	/* methods */
+    //错误位和内存分配器的标志
 	unsigned long		flags;		/* error bits/gfp mask */
+    //指向拥有所有者数据的块设备的backing_dev_info的指针
 	struct backing_dev_info *backing_dev_info; /* device readahead, etc */
+    //通常是管理private_list链表时使用的自旋锁
 	spinlock_t		private_lock;	/* for use by the address_space */
+    //通常是与inode相关的间接块的脏缓冲区的链表
 	struct list_head	private_list;	/* ditto */
+    //通常是指向间接块所在块设备的addreee_space对象的指针
 	struct address_space	*assoc_mapping;	/* ditto */
 } __attribute__((aligned(sizeof(long))));
 	/*

@@ -721,6 +721,7 @@ EXPORT_SYMBOL(bdev_read_only);
 int invalidate_partition(struct gendisk *disk, int index)
 {
 	int res = 0;
+    //如果index == 0, 就获取主设备的block device
 	struct block_device *bdev = bdget_disk(disk, index);
 	if (bdev) {
 		fsync_bdev(bdev);

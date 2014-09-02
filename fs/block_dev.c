@@ -887,7 +887,11 @@ int check_disk_change(struct block_device *bdev)
 }
 
 EXPORT_SYMBOL(check_disk_change);
-
+/**
+* bd_set_size - 设置block device的block size
+* @param bdev : block device 对象
+* @param size : 磁盘的容量
+*/
 void bd_set_size(struct block_device *bdev, loff_t size)
 {
 	unsigned bsize = bdev_hardsect_size(bdev);
@@ -989,7 +993,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 		bdev->bd_contains = bdev;
         //没有使用fdisk之前，是不会有分区信息的，即没有sda1,sda2等设备
 		if (!part) {
-			//block device是一个分区
+			//block device是一个磁盘
 			struct backing_dev_info *bdi;
 			if (disk->fops->open) {
 				//调用磁盘的open
@@ -1000,7 +1004,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 			}
 			//disk->fops->open有可能会修改bd_openers
 			if (!bdev->bd_openers) {
-				//一个扇区512字节,左移9位
+				//给bdev的block size 赋值。一个扇区512字节,左移9位
 				bd_set_size(bdev,(loff_t)get_capacity(disk)<<9);
 				bdi = blk_get_backing_dev_info(bdev);
 				if (bdi == NULL)
@@ -1008,10 +1012,12 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 				bdev->bd_inode->i_data.backing_dev_info = bdi;
 			}
 			if (bdev->bd_invalidated)
+                //重新扫描分区
 				rescan_partitions(disk, bdev);
 		} else {
-			//不是分区
-			struct hd_struct *p;
+			//是分区
+			struct hd_struct *p
+            //主block device的对象
 			struct block_device *whole;
 			whole = bdget_disk(disk, 0);
 			ret = -ENOMEM;
@@ -1020,6 +1026,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 			ret = blkdev_get_whole(whole, file->f_mode, file->f_flags);
 			if (ret)
 				goto out_first;
+            //bdev的主设备指向whole
 			bdev->bd_contains = whole;
 			mutex_lock_nested(&whole->bd_mutex, BD_MUTEX_WHOLE);
 			whole->bd_part_count++;

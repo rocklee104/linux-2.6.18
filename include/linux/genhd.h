@@ -104,10 +104,10 @@ struct disk_stats {
 struct gendisk {
     //磁盘主设备号
 	int major;			/* major number of driver */
-	//与磁盘关联的第一个次设备号 
+	//与磁盘关联的第一个次设备号, 如sda的次设备号
 	int first_minor;
-	//主次分区的总个数,如果为1,表示只有主分区,无法分配次分区
-    //与磁盘关联的次设备号范围
+    //主次分区的总个数,如果为1,表示只有主分区,无法分配次分区， 例/dev/sda 8,  0, 
+    //其主设备号是8，次设备号是0，first_minor=0， minors=16
 	int minors;                     /* maximum number of minors, =1 for
                                          * disks that can't be partitioned. */
 	char disk_name[32];		/* name of major driver */

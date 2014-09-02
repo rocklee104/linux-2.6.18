@@ -25,6 +25,7 @@ typedef int (congested_fn)(void *, int);
 //backing device infomation,备用存储设备信息
 //备用存储设备，用于存储数据的设备，比如硬盘
 struct backing_dev_info {
+	//最大预读数量
 	unsigned long ra_pages;	/* max readahead in PAGE_CACHE_SIZE units */
 	unsigned long state;	/* Always use atomic bitops on this */
 	unsigned int capabilities; /* Device capabilities */

@@ -324,7 +324,8 @@ static inline void **__lookup_slot(struct radix_tree_root *root,
 
 	shift = (height-1) * RADIX_TREE_MAP_SHIFT;
 	slot = &root->rnode;
-
+    
+    //自根像子node查询
 	while (height > 0) {
 		if (*slot == NULL)
 			return NULL;
