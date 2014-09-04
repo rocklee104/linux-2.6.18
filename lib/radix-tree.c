@@ -55,9 +55,11 @@ struct radix_tree_path {
 	int offset;
 };
 
+//机器字长的位数
 #define RADIX_TREE_INDEX_BITS  (8 /* CHAR_BIT */ * sizeof(unsigned long))
 #define RADIX_TREE_MAX_PATH (RADIX_TREE_INDEX_BITS/RADIX_TREE_MAP_SHIFT + 2)
 
+//将对应height的最大index value存入数组，加快获取结果的速度
 static unsigned long height_to_maxindex[RADIX_TREE_MAX_PATH] __read_mostly;
 
 /*
@@ -400,6 +402,7 @@ void *radix_tree_tag_set(struct radix_tree_root *root,
 
 		offset = (index >> shift) & RADIX_TREE_MAP_MASK;
 		if (!tag_get(slot, tag, offset))
+			//如果slot->tags[tag][offset]为0，则需要将其设置成1 
 			tag_set(slot, tag, offset);
 		slot = slot->slots[offset];
 		BUG_ON(slot == NULL);
@@ -408,6 +411,7 @@ void *radix_tree_tag_set(struct radix_tree_root *root,
 	}
 
 	/* set the root's tag bit */
+	//处理当hight == 0的情况，即root的rnode直接保存数据的situation
 	if (slot && !root_tag_get(root, tag))
 		root_tag_set(root, tag);
 
@@ -852,11 +856,15 @@ radix_tree_node_ctor(void *node, kmem_cache_t *cachep, unsigned long flags)
 	memset(node, 0, sizeof(struct radix_tree_node));
 }
 
+/**
+* __maxindex - 计算对应height情况下的index最大值
+*/
 static __init unsigned long __maxindex(unsigned int height)
 {
 	unsigned int tmp = height * RADIX_TREE_MAP_SHIFT;
 	unsigned long index = (~0UL >> (RADIX_TREE_INDEX_BITS - tmp - 1)) >> 1;
 
+	//index是不能大于一个机器字长的
 	if (tmp >= RADIX_TREE_INDEX_BITS)
 		index = ~0UL;
 	return index;

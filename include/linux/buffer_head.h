@@ -15,22 +15,33 @@
 #include <asm/atomic.h>
 
 enum bh_state_bits {
+    //缓冲区包含有效数据
 	BH_Uptodate,	/* Contains valid data */
 	BH_Dirty,	/* Is dirty */
+    //缓冲区被加锁，通常发生在缓冲区进行磁盘传输时
 	BH_Lock,	/* Is locked */
+    //已经为初始化缓冲区而请求数据传输
 	BH_Req,		/* Has been submitted for I/O */
 	BH_Uptodate_Lock,/* Used by the first bh in a page, to serialise
 			  * IO completion of other buffers in the page
 			  */
-
+    //缓冲区被映射到磁盘，如果相应的缓冲区首部的b_bdev和b_blocknr有效就置位
 	BH_Mapped,	/* Has a disk mapping */
+    //相应的块刚被分配还没有被访问过
 	BH_New,		/* Disk mapping was newly created by get_block */
+    //异步读取缓冲区
 	BH_Async_Read,	/* Is under end_buffer_async_read I/O */
+    //异步写缓冲区
 	BH_Async_Write,	/* Is under end_buffer_async_write I/O */
+    //还没有在磁盘上分配缓冲区
 	BH_Delay,	/* Buffer is not yet allocated on disk */
-	BH_Boundary,	/* Block is followed by a discontiguity */
+    //如果两个相邻的块在其中一个提交之后不再相邻就置位
+	BH_Boundary,	/* Block is followed by a discontinuity */
+    //写块时出现io错误
 	BH_Write_EIO,	/* I/O error on write */
+    //如果必须严格的把块写到它之前提交的块之后（用于日志文件系统）
 	BH_Ordered,	/* ordered write */
+    //块设备不支持所请求的操作
 	BH_Eopnotsupp,	/* operation not supported (barrier) */
 
 	BH_PrivateStart,/* not a state bit, but the first bit available
@@ -55,21 +66,27 @@ typedef void (bh_end_io_t)(struct buffer_head *bh, int uptodate);
  * for backward compatibility reasons (e.g. submit_bh).
  */
 struct buffer_head {
+    //缓冲区状态标志
 	unsigned long b_state;		/* buffer state bitmap (see above) */
-    //块缓冲区所在页框的页描述符地址
+    //块缓冲区所在页框的页描述符地址,链表的下一个元素,这是一个单向循环链表
 	struct buffer_head *b_this_page;/* circular list of page's buffers */
+    //指向拥有该块的缓冲区页的指针
 	struct page *b_page;		/* the page this bh is mapped to */
 
     //逻辑块号
 	sector_t b_blocknr;		/* start block number */
+    //块大小
 	size_t b_size;			/* size of mapping */
     //如果页框位于高端内存中,那么b_data字段存放页中块缓冲区的偏移量
     //否则,b_data存放块缓冲区本身的起始线性地址
 	char *b_data;			/* pointer to data within the page */
-
+    //指向块设备描述符的指针
 	struct block_device *b_bdev;
+    //io完成方法
 	bh_end_io_t *b_end_io;		/* I/O completion */
+    //指向io完成方法数据的指针
  	void *b_private;		/* reserved for b_end_io */
+    //与某个索引节点相关的间接块的链表提供的指针
 	struct list_head b_assoc_buffers; /* associated with another mapping */
 	atomic_t b_count;		/* users using this buffer_head */
 };
@@ -136,6 +153,7 @@ BUFFER_FNS(Eopnotsupp, eopnotsupp)
 		BUG_ON(!PagePrivate(page));			\
 		((struct buffer_head *)page_private(page));	\
 	})
+//测试page->private是否被占用
 #define page_has_buffers(page)	PagePrivate(page)
 
 /*
@@ -227,7 +245,9 @@ static inline void attach_page_buffers(struct page *page,
 		struct buffer_head *head)
 {
 	page_cache_get(page);
+    //设置PG_private标志，page->private不能做其他用途
 	SetPagePrivate(page);
+    //page->private指向head
 	set_page_private(page, (unsigned long)head);
 }
 

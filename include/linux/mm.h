@@ -223,7 +223,9 @@ struct inode;
 struct page {
 	unsigned long flags;		/* Atomic flags, some possibly
 					 * updated asynchronously */
+    //-1表示空闲
 	atomic_t _count;		/* Usage count, see below. */
+    //页框中页表项数
 	atomic_t _mapcount;		/* Count of ptes mapped in mms,
 					 * to show when page is mapped
 					 * & limit reverse map searches.
@@ -237,6 +239,7 @@ struct page {
 						 * indicates order in the buddy
 						 * system if PG_buddy is set.
 						 */
+        //当页被插入页高速缓存中使用
 		struct address_space *mapping;	/* If low bit clear, points to
 						 * inode address_space, or NULL.
 						 * If page mapped as anonymous

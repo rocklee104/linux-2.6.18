@@ -509,7 +509,9 @@ enum bdev_bd_mutex_lock_class
  * Radix-tree tags, for tagging dirty and writeback pages within the pagecache
  * radix trees
  */
+//指定页是否是dirty
 #define PAGECACHE_TAG_DIRTY	0
+//表示该页当前正在回写
 #define PAGECACHE_TAG_WRITEBACK	1
 
 int mapping_tagged(struct address_space *mapping, int tag);

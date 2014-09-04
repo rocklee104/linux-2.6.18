@@ -62,27 +62,41 @@
  * (see linux/mmzone.h).  New flags must _not_ overlap with this area.
  */
 #define PG_locked	 	 0	/* Page is locked. Don't touch. */
+//传输时发生io错误
 #define PG_error		 1
+//刚刚访问过的页
 #define PG_referenced		 2
+//在完成读之后置位，除非发生io错误
 #define PG_uptodate		 3
-
+//页被修改
 #define PG_dirty	 	 4
+//页在活动或非活动页链表中
 #define PG_lru			 5
+//页在活动页链表中
 #define PG_active		 6
+//包含在slab中的页框
 #define PG_slab			 7	/* slab debug (Suparna wants this) */
-
+//由一些文件系统（ext2/ext3）使用的标志
 #define PG_checked		 8	/* kill me in 2.5.<early>. */
+//x86构架上没有用
 #define PG_arch_1		 9
+//页框留给内核代码或者没有使用
 #define PG_reserved		10
+//page->private被使用
 #define PG_private		11	/* Has something at ->private */
-
+//正在使用writeback将页写到磁盘
 #define PG_writeback		12	/* Page is under writeback */
+//系统挂起/唤醒时使用
 #define PG_nosave		13	/* Used for system suspend/resume */
+//通过扩展分页机制处理页框
 #define PG_compound		14	/* Part of a compound page */
+//页属于swap高速缓存
 #define PG_swapcache		15	/* Swap page: swp_entry_t in private */
-
+//页框中的所有数据对应于磁盘上分配的块
 #define PG_mappedtodisk		16	/* Has blocks allocated on-disk */
+//为回收内存对页已经做了写入磁盘的标记
 #define PG_reclaim		17	/* To be reclaimed asap */
+//系统挂起/恢复时使用
 #define PG_nosave_free		18	/* Free, should not be written */
 #define PG_buddy		19	/* Page is free, on buddy lists */
 

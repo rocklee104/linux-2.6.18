@@ -999,6 +999,13 @@ int remove_inode_buffers(struct inode *inode)
  * The retry flag is used to differentiate async IO (paging, swapping)
  * which may not fail from ordinary buffer allocations.
  */
+/*
+* 当指定一个用作数据区的页以及每个buffer的大小时，创建合适数量的buffer.使用bh->b_this_page
+* 链接这些创建的buffer.如果无法创建更多的buffer, 就返回NULL
+*/
+/*
+* alloc_page_buffers - 分割一个page成size大小的块缓 
+*/ 
 struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
 		int retry)
 {
@@ -1647,23 +1654,29 @@ void create_empty_buffers(struct page *page,
 			unsigned long blocksize, unsigned long b_state)
 {
 	struct buffer_head *bh, *head, *tail;
-
+    
+    //head是单向链表最头部成员
 	head = alloc_page_buffers(page, blocksize, 1);
 	bh = head;
 	do {
+        //将链表各成员设置b_state
 		bh->b_state |= b_state;
 		tail = bh;
 		bh = bh->b_this_page;
 	} while (bh);
+    //尾部成员的next指向头部，完成循环链表的连接
 	tail->b_this_page = head;
 
 	spin_lock(&page->mapping->private_lock);
 	if (PageUptodate(page) || PageDirty(page)) {
+        //页中包含有效数据或者page被标记为dirty,需要将buffer_head设置成同样的状态
 		bh = head;
 		do {
-			if (PageDirty(page))
-				set_buffer_dirty(bh);
+            if (PageDirty(page))
+                //将bh->b_state设置成BH_Dirty
+                set_buffer_dirty(bh); 
 			if (PageUptodate(page))
+                //将bh->b_state设置成BH_Uptodate
 				set_buffer_uptodate(bh);
 			bh = bh->b_this_page;
 		} while (bh != head);
@@ -2072,10 +2085,14 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	BUG_ON(!PageLocked(page));
 	blocksize = 1 << inode->i_blkbits;
 	if (!page_has_buffers(page))
+        //如果块缓存不存在就创建
 		create_empty_buffers(page, blocksize, 0);
+    //获取块缓存链表头
 	head = page_buffers(page);
 
+    //块起始位置
 	iblock = (sector_t)page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
+    //文件末尾的块
 	lblock = (i_size_read(inode)+blocksize-1) >> inode->i_blkbits;
 	bh = head;
 	nr = 0;
@@ -2083,14 +2100,17 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 
 	do {
 		if (buffer_uptodate(bh))
+            //如果记录块内容是一致的，就跳过
 			continue;
 
 		if (!buffer_mapped(bh)) {
+            //如果块缓冲区还没有和物理块建立映射关系且块起始地址未超出文件末尾,建立映射
 			int err = 0;
 
 			fully_mapped = 0;
 			if (iblock < lblock) {
 				WARN_ON(bh->b_size != blocksize);
+                //inode用于获取bdev, iblock指定了block number, bh是一个块缓存
 				err = get_block(inode, iblock, bh, 0);
 				if (err)
 					SetPageError(page);
