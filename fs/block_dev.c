@@ -1016,7 +1016,7 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 				rescan_partitions(disk, bdev);
 		} else {
 			//是分区
-			struct hd_struct *p
+			struct hd_struct *p;
             //主block device的对象
 			struct block_device *whole;
 			whole = bdget_disk(disk, 0);
