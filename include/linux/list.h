@@ -721,6 +721,7 @@ static inline void hlist_add_head(struct hlist_node *n, struct hlist_head *h)
  * problems on Alpha CPUs.  Regardless of the type of CPU, the
  * list-traversal primitive must be guarded by rcu_read_lock().
  */
+//将n头插入h的链表中
 static inline void hlist_add_head_rcu(struct hlist_node *n,
 					struct hlist_head *h)
 {

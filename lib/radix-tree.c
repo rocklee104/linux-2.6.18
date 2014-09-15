@@ -45,8 +45,10 @@
 	((RADIX_TREE_MAP_SIZE + BITS_PER_LONG - 1) / BITS_PER_LONG)
 
 struct radix_tree_node {
+    //表示slots中有多少个slot有数据
 	unsigned int	count;
 	void		*slots[RADIX_TREE_MAP_SIZE]; //64
+    //2个long的字节数，共128位
 	unsigned long	tags[RADIX_TREE_MAX_TAGS][RADIX_TREE_TAG_LONGS];
 };
 
@@ -57,6 +59,7 @@ struct radix_tree_path {
 
 //机器字长的位数
 #define RADIX_TREE_INDEX_BITS  (8 /* CHAR_BIT */ * sizeof(unsigned long))
+//+2是因为：1.RADIX_TREE_INDEX_BITS/RADIX_TREE_MAP_SHIFT除不断的情况 2.第一个path记为NULL
 #define RADIX_TREE_MAX_PATH (RADIX_TREE_INDEX_BITS/RADIX_TREE_MAP_SHIFT + 2)
 
 //将对应height的最大index value存入数组，加快获取结果的速度
@@ -170,7 +173,8 @@ static inline void root_tag_clear(struct radix_tree_root *root, unsigned int tag
 {
 	root->gfp_mask &= ~(1 << (tag + __GFP_BITS_SHIFT));
 }
-
+//radix tree的tag保存在__GFP_BITS_SHIFT及__GFP_BITS_SHIFT + 1的位上
+//root_tag_clear_all用于清除tag
 static inline void root_tag_clear_all(struct radix_tree_root *root)
 {
 	root->gfp_mask &= __GFP_BITS_MASK;
@@ -190,6 +194,7 @@ static inline int any_tag_set(struct radix_tree_node *node, unsigned int tag)
 	int idx;
 	for (idx = 0; idx < RADIX_TREE_TAG_LONGS; idx++) {
 		if (node->tags[tag][idx])
+            //tags[tag][idx]表示一个word，这个word中不允许任何一个bit被置位
 			return 1;
 	}
 	return 0;
@@ -207,6 +212,7 @@ static inline unsigned long radix_tree_maxindex(unsigned int height)
 /*
  *	Extend a radix tree so it can store key @index.
  */
+//向上扩展
 static int radix_tree_extend(struct radix_tree_root *root, unsigned long index)
 {
 	struct radix_tree_node *node;
@@ -233,12 +239,15 @@ static int radix_tree_extend(struct radix_tree_root *root, unsigned long index)
 		/* Propagate the aggregated tag info into the new root */
 		for (tag = 0; tag < RADIX_TREE_MAX_TAGS; tag++) {
 			if (root_tag_get(root, tag))
+                //由于root->rnode成为了node的子节点，故node需要根据root中的tag，设置自己的tag
 				tag_set(node, tag, 0);
 		}
-
+        
+        //只有slots[0]中有数据
 		node->count = 1;
 		root->rnode = node;
 		root->height++;
+    //直到root->height == height才会跳出循环
 	} while (height > root->height);
 out:
 	return 0;
@@ -252,6 +261,7 @@ out:
  *
  *	Insert an item into the radix tree at position @index.
  */
+//item只能为叶子
 int radix_tree_insert(struct radix_tree_root *root,
 			unsigned long index, void *item)
 {
@@ -278,9 +288,11 @@ int radix_tree_insert(struct radix_tree_root *root,
 			if (!(slot = radix_tree_node_alloc(root)))
 				return -ENOMEM;
 			if (node) {
+                //如果root下有radix节点
 				node->slots[offset] = slot;
 				node->count++;
 			} else
+                //如果root下没有radix节点
 				root->rnode = slot;
 		}
 
@@ -296,11 +308,13 @@ int radix_tree_insert(struct radix_tree_root *root,
 		return -EEXIST;
 
 	if (node) {
+        //插入item
 		node->count++;
 		node->slots[offset] = item;
 		BUG_ON(tag_get(node, 0, offset));
 		BUG_ON(tag_get(node, 1, offset));
 	} else {
+        //如果height == 0
 		root->rnode = item;
 		BUG_ON(root_tag_get(root, 0));
 		BUG_ON(root_tag_get(root, 1));
@@ -433,9 +447,12 @@ EXPORT_SYMBOL(radix_tree_tag_set);
  *	Returns the address of the tagged item on success, else NULL.  ie:
  *	has the same return value and semantics as radix_tree_lookup().
  */
+//检查键值index对应的条目是否置位tag，如果键值不存在，返回NULL，如果键值存在，但tag未设置，返回slot;
+//如果键值存在，且tag已设置，返回slot
 void *radix_tree_tag_clear(struct radix_tree_root *root,
 			unsigned long index, unsigned int tag)
 {
+    //pathp用于记录radix tree中查找路径的所有节点
 	struct radix_tree_path path[RADIX_TREE_MAX_PATH], *pathp = path;
 	struct radix_tree_node *slot = NULL;
 	unsigned int height, shift;
@@ -445,6 +462,7 @@ void *radix_tree_tag_clear(struct radix_tree_root *root,
 		goto out;
 
 	shift = (height - 1) * RADIX_TREE_MAP_SHIFT;
+    //path[0].node = NULL, 是为了在之后从数组尾向头遍历的过程中判断记录是否有效
 	pathp->node = NULL;
 	slot = root->rnode;
 
@@ -462,15 +480,19 @@ void *radix_tree_tag_clear(struct radix_tree_root *root,
 		shift -= RADIX_TREE_MAP_SHIFT;
 		height--;
 	}
-
+    
+    //这时候，key值不存在，返回NULL
 	if (slot == NULL)
 		goto out;
 
 	while (pathp->node) {
 		if (!tag_get(pathp->node, tag, pathp->offset))
+            //如果tag本来就是0
 			goto out;
+        //如果tag为1
 		tag_clear(pathp->node, tag, pathp->offset);
 		if (any_tag_set(pathp->node, tag))
+            //如果存在任何一个bit被置位，就退出,这出现在一个slot中tag有多bit被置位的情况
 			goto out;
 		pathp--;
 	}
@@ -509,9 +531,11 @@ int radix_tree_tag_get(struct radix_tree_root *root,
 
 	/* check the root's tag bit */
 	if (!root_tag_get(root, tag))
+        //radix tree中没有tag
 		return 0;
 
 	if (height == 0)
+        //radix tree 中仅有root有标志
 		return 1;
 
 	shift = (height - 1) * RADIX_TREE_MAP_SHIFT;
@@ -521,6 +545,7 @@ int radix_tree_tag_get(struct radix_tree_root *root,
 		int offset;
 
 		if (slot == NULL)
+        //如果叶子节点不存在，tag为0
 			return 0;
 
 		offset = (index >> shift) & RADIX_TREE_MAP_MASK;
@@ -740,6 +765,7 @@ EXPORT_SYMBOL(radix_tree_gang_lookup_tag);
  *	radix_tree_shrink    -    shrink height of a radix tree to minimal
  *	@root		radix tree root
  */
+//如果root->rnode->count == 1的时候，减少tree height
 static inline void radix_tree_shrink(struct radix_tree_root *root)
 {
 	/* try to shrink tree height */
@@ -792,6 +818,7 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 
 	do {
 		if (slot == NULL)
+            //当key值不存在时
 			goto out;
 
 		pathp++;
@@ -804,6 +831,7 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 	} while (height > 0);
 
 	if (slot == NULL)
+        //item不存在
 		goto out;
 
 	/*
@@ -820,16 +848,18 @@ void *radix_tree_delete(struct radix_tree_root *root, unsigned long index)
 		pathp->node->count--;
 
 		if (pathp->node->count) {
+            //如果pathp->node->slots中还有其他item在使用
 			if (pathp->node == root->rnode)
 				radix_tree_shrink(root);
 			goto out;
-		}
-
+        }
+        //pathp->node->slots中没有其他item在使用,就把这个node也释放掉
 		/* Node with zero slots in use so free it */
 		radix_tree_node_free(pathp->node);
 
 		pathp--;
 	}
+    //若root->rnode都被释放掉
 	root_tag_clear_all(root);
 	root->height = 0;
 	root->rnode = NULL;

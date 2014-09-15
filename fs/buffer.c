@@ -2098,6 +2098,12 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	nr = 0;
 	i = 0;
 
+    /**
+     * 需要处理3中情况： 
+     * 1.缓冲区的内容是最新的 
+     * 2.缓冲区的内容不是最新的，有映射 
+     * 3.缓冲区的内容没有映射 
+     */
 	do {
 		if (buffer_uptodate(bh))
             //如果记录块内容是一致的，就跳过
@@ -2111,6 +2117,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 			if (iblock < lblock) {
 				WARN_ON(bh->b_size != blocksize);
                 //inode用于获取bdev, iblock指定了block number, bh是一个块缓存
+                //get_block用于定位一个块
 				err = get_block(inode, iblock, bh, 0);
 				if (err)
 					SetPageError(page);
@@ -2131,6 +2138,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 			if (buffer_uptodate(bh))
 				continue;
 		}
+        //不是最新的，但是有映射的记录块的buffer_head放到指针数组arr[]中
 		arr[nr++] = bh;
 	} while (i++, iblock++, (bh = bh->b_this_page) != head);
 
@@ -2163,6 +2171,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	for (i = 0; i < nr; i++) {
 		bh = arr[i];
 		if (buffer_uptodate(bh))
+            //如果buffer中的内容和disk中的一致，就从buffer中读取
 			end_buffer_async_read(bh, 1);
 		else
 			submit_bh(READ, bh);

@@ -322,6 +322,7 @@ static inline void wait_on_buffer(struct buffer_head *bh)
 static inline void lock_buffer(struct buffer_head *bh)
 {
 	might_sleep();
+    //如果buffer中被置位BH_Lock, 就调用__lock_buffer，否则置位BH_Lock，然后退出
 	if (test_set_buffer_locked(bh))
 		__lock_buffer(bh);
 }
