@@ -330,6 +330,8 @@ unsigned long __per_cpu_offset[NR_CPUS] __read_mostly;
 
 EXPORT_SYMBOL(__per_cpu_offset);
 
+//每个cpu的per-cpu变量副本分配空间,这时候alloc内存分配器还没起来，
+//只能用alloc_bootmem分配空间
 static void __init setup_per_cpu_areas(void)
 {
 	unsigned long size, i;
