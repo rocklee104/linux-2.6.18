@@ -160,6 +160,7 @@ repeat:
 	if (atomic_read(&dentry->d_count) == 1)
 		might_sleep();
 	/* 这里只对dentry->d_count做减1操作，如果减1后dentry->d_count不为0，那立刻返回。*/
+    // atomic_dec_and_lock (x, &lock), 如果x - 1 == 0, 返回1， 否则，返回0
 	if (!atomic_dec_and_lock(&dentry->d_count, &dcache_lock))
 		return;
 

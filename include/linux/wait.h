@@ -443,6 +443,7 @@ static inline int wait_on_bit(void *word, int bit,
  * One uses wait_on_bit_lock() where one is waiting for the bit to
  * clear with the intention of setting it, and when done, clearing it.
  */
+//使用原子位操作，试着去置位，若已经置位，则任务被挂起，直到调用wake_up_bit()唤醒等待的线程。
 static inline int wait_on_bit_lock(void *word, int bit,
 				int (*action)(void *), unsigned mode)
 {

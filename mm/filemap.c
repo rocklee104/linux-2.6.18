@@ -441,12 +441,14 @@ int add_to_page_cache(struct page *page, struct address_space *mapping,
 
 	if (error == 0) {
 		write_lock_irq(&mapping->tree_lock);
+        //将page插入address_space的page_tree中
 		error = radix_tree_insert(&mapping->page_tree, offset, page);
 		if (!error) {
 			page_cache_get(page);
 			SetPageLocked(page);
 			page->mapping = mapping;
 			page->index = offset;
+            //增加address_space中的page计数
 			mapping->nrpages++;
 			__inc_zone_page_state(page, NR_FILE_PAGES);
 		}
@@ -515,6 +517,7 @@ void fastcall wait_on_page_bit(struct page *page, int bit_nr)
 	DEFINE_WAIT_BIT(wait, &page->flags, bit_nr);
 
 	if (test_bit(bit_nr, &page->flags))
+        //如果page->flag的第bit_nr被置位，就等待其被清除
 		__wait_on_bit(page_waitqueue(page), &wait, sync_page,
 							TASK_UNINTERRUPTIBLE);
 }
@@ -628,17 +631,22 @@ EXPORT_SYMBOL(find_trylock_page);
  *
  * Returns zero if the page was not present. find_lock_page() may sleep.
  */
+//寻找并锁定一个page
 struct page *find_lock_page(struct address_space *mapping,
 				unsigned long offset)
 {
 	struct page *page;
-
+    
+    //操作radix tree中的page，必须加锁
 	read_lock_irq(&mapping->tree_lock);
 repeat:
 	page = radix_tree_lookup(&mapping->page_tree, offset);
 	if (page) {
 		page_cache_get(page);
+        //如果page已经被置位为lock, 本次等待lock释放，再锁定page
+        //如果page没有被lock，直接置位lock
 		if (TestSetPageLocked(page)) {
+            //因为这个page是在radix tree中的，写之前必须释放read锁
 			read_unlock_irq(&mapping->tree_lock);
 			__lock_page(page);
 			read_lock_irq(&mapping->tree_lock);
@@ -682,6 +690,7 @@ struct page *find_or_create_page(struct address_space *mapping,
 repeat:
 	page = find_lock_page(mapping, index);
 	if (!page) {
+        //如果page为NULL, 表示没有在地址空间中找到index对应的page,这时候就需要分配一个
 		if (!cached_page) {
 			cached_page = alloc_page(gfp_mask);
 			if (!cached_page)
