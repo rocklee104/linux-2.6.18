@@ -32,9 +32,14 @@ struct vm_area_struct;
  *
  * __GFP_NORETRY: The VM implementation must not retry indefinitely.
  */
+
+//分配器可以休眠
 #define __GFP_WAIT	((__force gfp_t)0x10u)	/* Can wait and reschedule? */
+//分配器可以访问紧急事件缓冲池
 #define __GFP_HIGH	((__force gfp_t)0x20u)	/* Should access emergency pools? */
+//分配器可以启动磁盘I/O
 #define __GFP_IO	((__force gfp_t)0x40u)	/* Can start physical IO? */
+//分配器可以启动文件系统I/O
 #define __GFP_FS	((__force gfp_t)0x80u)	/* Can call down to low-level FS? */
 #define __GFP_COLD	((__force gfp_t)0x100u)	/* Cache-cold page required */
 #define __GFP_NOWARN	((__force gfp_t)0x200u)	/* Suppress page allocation failure warning */

@@ -434,6 +434,7 @@ int filemap_write_and_wait_range(struct address_space *mapping,
  *
  * This function does not add the page to the LRU.  The caller must do that.
  */
+//将新分配的page加入address_space中
 int add_to_page_cache(struct page *page, struct address_space *mapping,
 		pgoff_t offset, gfp_t gfp_mask)
 {

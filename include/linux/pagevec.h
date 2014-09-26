@@ -14,6 +14,8 @@
 struct page;
 struct address_space;
 
+//struct pagevec的大小是2的n次幂
+//当一个 pagevec 的结构满了，那么该 pagevec 中的所有页面会一次性地被移动到相应的 LRU 链表上去
 struct pagevec {
 	unsigned long nr;
 	unsigned long cold;

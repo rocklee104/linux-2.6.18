@@ -506,6 +506,7 @@ static void free_more_memory(void)
  * I/O completion handler for block_read_full_page() - pages
  * which come unlocked at the end of I/O.
  */
+//uptodate表示本次读是否正确
 static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
 {
 	unsigned long flags;
@@ -518,6 +519,7 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
 
 	page = bh->b_page;
 	if (uptodate) {
+        //如果读正确，那么设置该buffer_head状态为BH_Uptodate
 		set_buffer_uptodate(bh);
 	} else {
 		clear_buffer_uptodate(bh);
@@ -532,15 +534,22 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
 	 * decide that the page is now completely done.
 	 */
 	first = page_buffers(page);
+    /*
+     *里禁止中断并且加自旋锁是为了防止多个buffer 
+     *head完成io后调用end_buffer_async_read对此page操作 
+    */
 	local_irq_save(flags);
 	bit_spin_lock(BH_Uptodate_Lock, &first->b_state);
+    //清除BH_Async_Read标志
 	clear_buffer_async_read(bh);
+    //对buffer_head解锁
 	unlock_buffer(bh);
 	tmp = bh;
 	do {
 		if (!buffer_uptodate(tmp))
 			page_uptodate = 0;
 		if (buffer_async_read(tmp)) {
+            //如果BH_Async_Read标志没有被清除，就马上退出
 			BUG_ON(!buffer_locked(tmp));
 			goto still_busy;
 		}
@@ -639,6 +648,7 @@ still_busy:
  * PageLocked prevents anyone from starting writeback of a page which is
  * under read I/O (PageWriteback is only ever set against a locked page).
  */
+//设置读完成后的回调函数
 static void mark_buffer_async_read(struct buffer_head *bh)
 {
 	bh->b_end_io = end_buffer_async_read;
@@ -1040,6 +1050,7 @@ try_again:
  * In case anything failed, we just free everything we got.
  */
 no_grow:
+	//依次释放bh
 	if (head) {
 		do {
 			bh = head;
@@ -1054,7 +1065,13 @@ no_grow:
 	 * become available.  But we don't want tasks sleeping with 
 	 * partially complete buffers, so all were released above.
 	 */
+	/*
+	 *同步io request不经过调度算法直接操作磁盘，可能会失败。异步io request 不能失败， 
+     *所以需要等待直到获取可用的bufferhead.我们不希望获取一个获取部分可用bh的task 
+     *睡眠，因为这样会浪费一部分内存空间。所以只要bh没有获取完全，就要将已经获得的bh释放
+	*/
 	if (!retry)
+		//如果retry为0，bh分配失败就退出
 		return NULL;
 
 	/* We're _really_ low on memory. Now we just
@@ -1063,6 +1080,7 @@ no_grow:
 	 * the reserve list is empty, we're sure there are 
 	 * async buffer heads in use.
 	 */
+	//如果retry为1（当async io request时），如果分配失败，需要继续分配bh
 	free_more_memory();
 	goto try_again;
 }
@@ -2098,7 +2116,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	nr = 0;
 	i = 0;
 
-    /**
+    /*
      * 需要处理3中情况： 
      * 1.缓冲区的内容是最新的 
      * 2.缓冲区的内容不是最新的，有映射 
@@ -2122,6 +2140,11 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 				if (err)
 					SetPageError(page);
 			}
+            /*
+             *调用get_block后，bh就会置位BH_Mapped,如果bh没有置位BH_Mapped, 
+             *就说明当前读的位置超过文件尾了，这时需要将内存block填充0，并设置为 
+             *BH_Uptodate状态。
+            */
 			if (!buffer_mapped(bh)) {
 				void *kaddr = kmap_atomic(page, KM_USER0);
 				memset(kaddr + i * blocksize, 0, blocksize);
@@ -2135,6 +2158,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 			 * get_block() might have updated the buffer
 			 * synchronously
 			 */
+            //get_block可能会异步修改bh,所以这里需要再次检查buffer是否uptodate
 			if (buffer_uptodate(bh))
 				continue;
 		}
@@ -2157,6 +2181,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 	}
 
 	/* Stage two: lock the buffers */
+    //如果某些块处于非Uptodata状态，那么需要锁住这些block,置位BH_Async_Read
 	for (i = 0; i < nr; i++) {
 		bh = arr[i];
 		lock_buffer(bh);
@@ -3093,10 +3118,13 @@ static int max_buffer_heads;
 int buffer_heads_over_limit;
 
 struct bh_accounting {
+	//用于累计每个cpu的bh，判断是否超过限额.
 	int nr;			/* Number of live bh's */
+	//用于判断当前cpu的bh是否超过4096
 	int ratelimit;		/* Limit cacheline bouncing */
 };
 
+//定义一个per-cpu变量
 static DEFINE_PER_CPU(struct bh_accounting, bh_accounting) = {0, 0};
 
 static void recalc_bh_state(void)
@@ -3105,7 +3133,12 @@ static void recalc_bh_state(void)
 	int tot = 0;
 
 	if (__get_cpu_var(bh_accounting).ratelimit++ < 4096)
+		//如果当前cpu的bh_accounting.ratelimit+1小于4096,就直接返回
 		return;
+	/*
+	 *如果当前cpu的bh_accounting.ratelimit+1等于4096,将ratelimit清0，重新累加计算
+	 *每个cpu的bh_accounting.nr，如果累加值超过max_buffer_heads，buffer_heads_over_limit置1
+	*/
 	__get_cpu_var(bh_accounting).ratelimit = 0;
 	for_each_online_cpu(i)
 		tot += per_cpu(bh_accounting, i).nr;
@@ -3116,6 +3149,7 @@ struct buffer_head *alloc_buffer_head(gfp_t gfp_flags)
 {
 	struct buffer_head *ret = kmem_cache_alloc(bh_cachep, gfp_flags);
 	if (ret) {
+		//判断bh是否超过系统限额
 		get_cpu_var(bh_accounting).nr++;
 		recalc_bh_state();
 		put_cpu_var(bh_accounting);

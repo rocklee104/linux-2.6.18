@@ -172,6 +172,17 @@ map_buffer_to_page(struct page *page, struct buffer_head *bh, int page_block)
  * represent the validity of its disk mapping and to decide when to do the next
  * get_block() call.
  */
+
+/*这个函数试图读取文件中的一个page大小的数据，最理想的情况下就是这个page大小 
+的数据都是在连续的物理磁盘上面的，然后函数只需要提交一个bio请求就可以获取 
+所有的数据，这个函数大部分工作在检查page上所有的物理块是否连续，检查的方法 
+就是调用文件系统提供的get_block函数，如果不连续，需要调用block_read_full_page 
+函数采用buffer缓冲区的形式来逐个块获取数据                  */
+/* 
+    1、调用get_block函数检查page中是不是所有的物理块都连续 
+    2、如果连续调用mpage_bio_submit函数请求整个page的数据 
+    3、如果不连续调用block_read_full_page逐个block读取 
+*/ 
 static struct bio *
 do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 		sector_t *last_block_in_bio, struct buffer_head *map_bh,
@@ -179,6 +190,7 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 {
 	struct inode *inode = page->mapping->host;
 	const unsigned blkbits = inode->i_blkbits;
+    //一个page可以容纳多少block
 	const unsigned blocks_per_page = PAGE_CACHE_SIZE >> blkbits;
 	const unsigned blocksize = 1 << blkbits;
 	sector_t block_in_file;
@@ -196,8 +208,11 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 	if (page_has_buffers(page))
 		goto confused;
 
+    //block_in_file 本page中的第一个block number 
 	block_in_file = (sector_t)page->index << (PAGE_CACHE_SHIFT - blkbits);
+    //本次传输的最后一个block
 	last_block = block_in_file + nr_pages * blocks_per_page;
+    //文件最后一个block
 	last_block_in_file = (i_size_read(inode) + blocksize - 1) >> blkbits;
 	if (last_block > last_block_in_file)
 		last_block = last_block_in_file;
@@ -206,7 +221,10 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 	/*
 	 * Map blocks using the result from the previous get_blocks call first.
 	 */
+    //有多少块
 	nblocks = map_bh->b_size >> blkbits;
+    //buffer_head.h中定义了buffer_##name
+    //mpage_readpage不会走到到下面的if中，因为map_bh没有BH_Mapped标志
 	if (buffer_mapped(map_bh) && block_in_file > *first_logical_block &&
 			block_in_file < (*first_logical_block + nblocks)) {
 		unsigned map_offset = block_in_file - *first_logical_block;
@@ -231,17 +249,26 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 	 * Then do more get_blocks calls until we are done with this page.
 	 */
 	map_bh->b_page = page;
+    /*这个循环是比较关键的路径，理解这个函数至关重要 
+    1、page_block从0开始循环，它表示在这个page内的block index 
+    2、调用get_block 函数查找对应逻辑块的物理块号是多少 
+    3、如果遇到了文件空洞、page上的物理块不连续就会跳转到confused 
+    4、将这个page中每个逻辑块对应的物理块都保存到临时的数组blocks[] 中 
+    */ 
+    //一次调用get_block（）获得的连续的磁盘的块数不够一页的话，就反复调用
 	while (page_block < blocks_per_page) {
 		map_bh->b_state = 0;
 		map_bh->b_size = 0;
 
 		if (block_in_file < last_block) {
+            //如果当前page中第一个block小于本次传输的最后一个block
 			map_bh->b_size = (last_block-block_in_file) << blkbits;
 			if (get_block(inode, block_in_file, map_bh, 0))
 				goto confused;
 			*first_logical_block = block_in_file;
 		}
-
+        
+        //map_bh没有映射，这应该就对应文件洞了
 		if (!buffer_mapped(map_bh)) {
 			fully_mapped = 0;
 			if (first_hole == blocks_per_page)
@@ -262,20 +289,25 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 			map_buffer_to_page(page, map_bh, page_block);
 			goto confused;
 		}
-	
+        
+         //走到这步来了说明遇到了一个文件洞，但是之后的块又映射了，这时应该将遇到洞以前的块处理掉，故跳至confused
 		if (first_hole != blocks_per_page)
 			goto confused;		/* hole -> non-hole */
 
 		/* Contiguous blocks? */
 		if (page_block && blocks[page_block-1] != map_bh->b_blocknr-1)
 			goto confused;
+        //计算出这个buffer_head指向的连续的块的块数
 		nblocks = map_bh->b_size >> blkbits;
+        //这个循环用来获取块在磁盘上连续的页中所有块在磁盘中的块号
+        //循环的结束条件是buffer_head所指向的块数减一至0或page中所有块在磁盘中的块号都以得出
 		for (relative_block = 0; ; relative_block++) {
 			if (relative_block == nblocks) {
 				clear_buffer_mapped(map_bh);
 				break;
 			} else if (page_block == blocks_per_page)
 				break;
+            //为page中连续的块计算在磁盘中的编号，放入blocks数组中
 			blocks[page_block] = map_bh->b_blocknr+relative_block;
 			page_block++;
 			block_in_file++;
@@ -301,10 +333,16 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 	/*
 	 * This page will go to BIO.  Do we need to send this BIO off first?
 	 */
+    //首次调用时bio为NULL
+    //如果bio不为空，而其中最后一个block与现在的不连续，则提交以前的bio
 	if (bio && (*last_block_in_bio != blocks[0] - 1))
 		bio = mpage_bio_submit(READ, bio);
 
 alloc_new:
+    /* 
+    重新分配一个bio结构体 blocks[0] << (blkbits - 9) 
+    这个是page中第一个逻辑块的物理块号,转换成物理扇区号 
+    */ 
 	if (bio == NULL) {
 		bio = mpage_alloc(bdev, blocks[0] << (blkbits - 9),
 			  	min_t(int, nr_pages, bio_get_nr_vecs(bdev)),
@@ -382,6 +420,7 @@ confused:
  *
  * This all causes the disk requests to be issued in the correct order.
  */
+//page以链表的形式传参，mapping是相关的地址空间，get_block用于查找匹配的块地址
 int
 mpage_readpages(struct address_space *mapping, struct list_head *pages,
 				unsigned nr_pages, get_block_t get_block)
@@ -393,13 +432,16 @@ mpage_readpages(struct address_space *mapping, struct list_head *pages,
 	struct buffer_head map_bh;
 	unsigned long first_logical_block = 0;
 
+    //在buffer_head.h中定义clear_buffer_##name
 	clear_buffer_mapped(&map_bh);
 	pagevec_init(&lru_pvec, 0);
 	for (page_idx = 0; page_idx < nr_pages; page_idx++) {
 		struct page *page = list_entry(pages->prev, struct page, lru);
 
 		prefetchw(&page->flags);
+        //将page从lru链表中取下
 		list_del(&page->lru);
+        //将从lru上取下的page加入mapping中
 		if (!add_to_page_cache(page, mapping,
 					page->index, GFP_KERNEL)) {
 			bio = do_mpage_readpage(bio, page,
@@ -431,6 +473,7 @@ int mpage_readpage(struct page *page, get_block_t get_block)
 	struct buffer_head map_bh;
 	unsigned long first_logical_block = 0;
 
+    //清除map_bh的BH_Mapped标志
 	clear_buffer_mapped(&map_bh);
 	bio = do_mpage_readpage(bio, page, 1, &last_block_in_bio,
 			&map_bh, &first_logical_block, get_block);

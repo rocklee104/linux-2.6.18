@@ -252,6 +252,9 @@ struct page {
 	    spinlock_t ptl;
 #endif
 	};
+	//映射内的偏移量，实际应用情况是：一个文件有多个n个block组成，这n个block
+	//占用了m个page, 第x个page记录的起始block是x * (blocks per page),
+	//这里的x就是page->index
 	pgoff_t index;			/* Our offset within mapping. */
 	struct list_head lru;		/* Pageout list, eg. active_list
 					 * protected by zone->lru_lock !
