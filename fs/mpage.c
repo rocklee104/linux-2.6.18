@@ -206,6 +206,7 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 	unsigned relative_block;
 
 	if (page_has_buffers(page))
+        //alread get ad bio
 		goto confused;
 
     //block_in_file 本page中的第一个block number 
@@ -262,6 +263,7 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 
 		if (block_in_file < last_block) {
             //如果当前page中第一个block小于本次传输的最后一个block
+            //left file size in transmission
 			map_bh->b_size = (last_block-block_in_file) << blkbits;
 			if (get_block(inode, block_in_file, map_bh, 0))
 				goto confused;
@@ -367,9 +369,12 @@ out:
 confused:
 	if (bio)
 		bio = mpage_bio_submit(READ, bio);
+
 	if (!PageUptodate(page))
-	        block_read_full_page(page, get_block);
+        //page is uptodate
+	    block_read_full_page(page, get_block);
 	else
+        //page is not uptodate
 		unlock_page(page);
 	goto out;
 }
@@ -466,6 +471,7 @@ EXPORT_SYMBOL(mpage_readpages);
 /*
  * This isn't called much at all
  */
+//get a bio and submit it
 int mpage_readpage(struct page *page, get_block_t get_block)
 {
 	struct bio *bio = NULL;
