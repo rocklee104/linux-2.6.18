@@ -578,7 +578,7 @@ struct inode {
 	unsigned long		i_blksize;
 	//版本号,以后每次使用递增
 	unsigned long		i_version;
-	//文件的块数
+	//文件的块数,当存在空洞时，i_blocks * i_blksize < i_size
 	blkcnt_t		i_blocks;
 	//文件中最后一个块的字节数
 	unsigned short          i_bytes;

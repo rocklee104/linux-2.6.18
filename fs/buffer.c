@@ -652,6 +652,7 @@ still_busy:
 static void mark_buffer_async_read(struct buffer_head *bh)
 {
 	bh->b_end_io = end_buffer_async_read;
+    //标记本buffer head需要被异步读取
 	set_buffer_async_read(bh);
 }
 
@@ -1038,6 +1039,7 @@ try_again:
 		bh->b_state = 0;
 		atomic_set(&bh->b_count, 0);
 		bh->b_private = NULL;
+        //从create_empty_buffers调用时，bh->b_size = blocksize
 		bh->b_size = size;
 
 		/* Link the buffer to its page */
@@ -2118,9 +2120,9 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 
     /*
      * 需要处理3中情况： 
-     * 1.缓冲区的内容是最新的 
-     * 2.缓冲区的内容不是最新的，有映射 
-     * 3.缓冲区的内容没有映射 
+     * 1.缓冲区的内容是最新的:直接跳过
+     * 2.缓冲区的内容不是最新的，有映射：加入数组
+     * 3.缓冲区的内容没有映射：映射，加入数组
      */
 	do {
 		if (buffer_uptodate(bh))
@@ -2135,7 +2137,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 			if (iblock < lblock) {
 				WARN_ON(bh->b_size != blocksize);
                 //inode用于获取bdev, iblock指定了block number, bh是一个块缓存
-                //get_block用于定位一个块
+                //get_block用于定位一个块, 即建立映射
 				err = get_block(inode, iblock, bh, 0);
 				if (err)
 					SetPageError(page);
@@ -2158,7 +2160,11 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 			 * get_block() might have updated the buffer
 			 * synchronously
 			 */
-            //get_block可能会异步修改bh,所以这里需要再次检查buffer是否uptodate
+            /*
+             *某些fs会在映射期间读出数据块，将buffer设置成uptodate, 
+             *以这里需要再次检查buffer是否uptodate
+            */
+            //据说reiserfs会干这个事情
 			if (buffer_uptodate(bh))
 				continue;
 		}
@@ -2176,12 +2182,13 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
 		 */
 		if (!PageError(page))
 			SetPageUptodate(page);
+        //如果所有的在buffer head都是BH_Uptodate状态，唤醒等待此页的进程
 		unlock_page(page);
 		return 0;
 	}
 
 	/* Stage two: lock the buffers */
-    //如果某些块处于非Uptodata状态，那么需要锁住这些block,置位BH_Async_Read
+    //如果某些块处于非Uptodate状态，那么需要锁住这些block,置位BH_Async_Read
 	for (i = 0; i < nr; i++) {
 		bh = arr[i];
 		lock_buffer(bh);

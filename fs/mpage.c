@@ -138,17 +138,24 @@ map_buffer_to_page(struct page *page, struct buffer_head *bh, int page_block)
 	int block = 0;
 
 	if (!page_has_buffers(page)) {
+        //如果page没有相关的buffer
 		/*
 		 * don't make any buffers if there is only one buffer on
 		 * the page and the page just needs to be set up to date
 		 */
 		if (inode->i_blkbits == PAGE_CACHE_SHIFT && 
 		    buffer_uptodate(bh)) {
+            /*
+             *如果这个buffer的大小刚好是一个page，并且buffer is uptodate, 
+             *就将这个page设置成uptodate 
+            */
 			SetPageUptodate(page);    
 			return;
 		}
+        //create buffers
 		create_empty_buffers(page, 1 << inode->i_blkbits, 0);
 	}
+    //获取buffer_head的首成员
 	head = page_buffers(page);
 	page_bh = head;
 	do {
@@ -250,11 +257,11 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 	 * Then do more get_blocks calls until we are done with this page.
 	 */
 	map_bh->b_page = page;
-    /*这个循环是比较关键的路径，理解这个函数至关重要 
+    /*
     1、page_block从0开始循环，它表示在这个page内的block index 
     2、调用get_block 函数查找对应逻辑块的物理块号是多少 
     3、如果遇到了文件空洞、page上的物理块不连续就会跳转到confused 
-    4、将这个page中每个逻辑块对应的物理块都保存到临时的数组blocks[] 中 
+    4、将这个page中每个逻辑块对应的物理块都保存到临时的数组blocks[]中 
     */ 
     //一次调用get_block（）获得的连续的磁盘的块数不够一页的话，就反复调用
 	while (page_block < blocks_per_page) {
@@ -269,8 +276,10 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 				goto confused;
 			*first_logical_block = block_in_file;
 		}
-        
-        //map_bh没有映射，这应该就对应文件洞了
+        /*
+         *map_bh没有映射，对应block_in_file >= last_block, 
+         *因为get_block会将buffer设置成BH_Mapped 
+        */
 		if (!buffer_mapped(map_bh)) {
 			fully_mapped = 0;
 			if (first_hole == blocks_per_page)
@@ -287,12 +296,17 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 		 * we just collected from get_block into the page's buffers
 		 * so readpage doesn't have to repeat the get_block call
 		 */
+        /*
+         *查检buffer_head是否为buffer_uptodate,因为个别fs会在get_block期间将整页读出来， 
+         *而我们在下面也会读出数据到buffer中，为了避免重复的读取，这里需要再次检查buffer标志 
+         *是否是BH_Uptodate
+        */
 		if (buffer_uptodate(map_bh)) {
 			map_buffer_to_page(page, map_bh, page_block);
 			goto confused;
 		}
         
-         //走到这步来了说明遇到了一个文件洞，但是之后的块又映射了，这时应该将遇到洞以前的块处理掉，故跳至confused
+         //走到这步来了说明遇到了一个文件洞，这时应该将遇到洞以前的块处理掉，故跳至confused
 		if (first_hole != blocks_per_page)
 			goto confused;		/* hole -> non-hole */
 
@@ -371,10 +385,10 @@ confused:
 		bio = mpage_bio_submit(READ, bio);
 
 	if (!PageUptodate(page))
-        //page is uptodate
+        //page is not uptodate
 	    block_read_full_page(page, get_block);
 	else
-        //page is not uptodate
+        //page is uptodate
 		unlock_page(page);
 	goto out;
 }
