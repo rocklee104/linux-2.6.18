@@ -73,9 +73,9 @@ struct buffer_head {
     //指向拥有该块的缓冲区页的指针
 	struct page *b_page;		/* the page this bh is mapped to */
 
-    //逻辑块号
+    //起始逻辑块号
 	sector_t b_blocknr;		/* start block number */
-    //块大小
+    //需要映射的大小，以byte为单位
 	size_t b_size;			/* size of mapping */
     //如果页框位于高端内存中,那么b_data字段存放页中块缓冲区的偏移量
     //否则,b_data存放块缓冲区本身的起始线性地址

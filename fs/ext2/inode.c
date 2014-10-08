@@ -196,9 +196,12 @@ static inline int verify_chain(Indirect *from, Indirect *to)
 static int ext2_block_to_path(struct inode *inode,
 			long i_block, int offsets[4], int *boundary)
 {
+    //在ext2中一个block占用多少个整形，及可以存储多少个block的记录
 	int ptrs = EXT2_ADDR_PER_BLOCK(inode->i_sb);
 	int ptrs_bits = EXT2_ADDR_PER_BLOCK_BITS(inode->i_sb);
+    //直接寻址的block个数
 	const long direct_blocks = EXT2_NDIR_BLOCKS,
+        //一级间接寻址的个数
 		indirect_blocks = ptrs,
 		double_blocks = (1 << (ptrs_bits * 2));
 	int n = 0;

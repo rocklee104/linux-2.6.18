@@ -278,11 +278,13 @@ do_mpage_readpage(struct bio *bio, struct page *page, unsigned nr_pages,
 		}
         /*
          *map_bh没有映射，对应block_in_file >= last_block, 
-         *因为get_block会将buffer设置成BH_Mapped 
+         *因为get_block会将buffer设置成BH_Mapped。 
+         *个人猜测，这里处理文件的洞 
         */
 		if (!buffer_mapped(map_bh)) {
 			fully_mapped = 0;
 			if (first_hole == blocks_per_page)
+                //只有第一次调用时会修改first_hole,后续调用不会修改这个值。
 				first_hole = page_block;
 			page_block++;
 			block_in_file++;
@@ -382,13 +384,17 @@ out:
 
 confused:
 	if (bio)
+        //如果已经构成了bio,就提交bio, 否则下面的函数会提交bh
 		bio = mpage_bio_submit(READ, bio);
 
 	if (!PageUptodate(page))
         //page is not uptodate
 	    block_read_full_page(page, get_block);
 	else
-        //page is uptodate
+        /*
+         *all data on this page is uptodate, nothing else should to do, except 
+         *unlock it 
+        */
 		unlock_page(page);
 	goto out;
 }

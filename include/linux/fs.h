@@ -1036,7 +1036,7 @@ struct super_block {
 	//文件系统名称
 	char s_id[32];				/* Informational name */
 
-	//指向的定文件系统的sb信息的指针
+	//指向的定文件系统的sb信息的指针，比如ext2_sb_info就存这里
 	void 			*s_fs_info;	/* Filesystem private info */
 
 	/*

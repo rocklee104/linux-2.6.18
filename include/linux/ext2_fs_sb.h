@@ -43,6 +43,7 @@ struct ext2_sb_info {
 	//当前挂载状态
 	unsigned short s_mount_state;
 	unsigned short s_pad;
+    //块地址编号的位bit数
 	int s_addr_per_block_bits;
 	int s_desc_per_block_bits;
 	int s_inode_size;
