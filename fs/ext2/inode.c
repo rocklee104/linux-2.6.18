@@ -210,18 +210,22 @@ static int ext2_block_to_path(struct inode *inode,
 	if (i_block < 0) {
 		ext2_warning (inode->i_sb, "ext2_block_to_path", "block < 0");
 	} else if (i_block < direct_blocks) {
+        //只有直接索引
 		offsets[n++] = i_block;
 		final = direct_blocks;
 	} else if ( (i_block -= direct_blocks) < indirect_blocks) {
+        //有直接索引，一级间接索引
 		offsets[n++] = EXT2_IND_BLOCK;
 		offsets[n++] = i_block;
 		final = ptrs;
 	} else if ((i_block -= indirect_blocks) < double_blocks) {
+        //有直接索引，一级间接索引，二级间接索引
 		offsets[n++] = EXT2_DIND_BLOCK;
 		offsets[n++] = i_block >> ptrs_bits;
 		offsets[n++] = i_block & (ptrs - 1);
 		final = ptrs;
 	} else if (((i_block -= double_blocks) >> (ptrs_bits * 2)) < ptrs) {
+        //有直接索引，一级间接索引，二级间接索引，三级间接索引
 		offsets[n++] = EXT2_TIND_BLOCK;
 		offsets[n++] = i_block >> (ptrs_bits * 2);
 		offsets[n++] = (i_block >> ptrs_bits) & (ptrs - 1);

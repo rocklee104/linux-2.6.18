@@ -184,7 +184,7 @@ map_buffer_to_page(struct page *page, struct buffer_head *bh, int page_block)
 的数据都是在连续的物理磁盘上面的，然后函数只需要提交一个bio请求就可以获取 
 所有的数据，这个函数大部分工作在检查page上所有的物理块是否连续，检查的方法 
 就是调用文件系统提供的get_block函数，如果不连续，需要调用block_read_full_page 
-函数采用buffer缓冲区的形式来逐个块获取数据                  */
+函数采用buffer缓冲区的形式来逐个块获取数据         
 /* 
     1、调用get_block函数检查page中是不是所有的物理块都连续 
     2、如果连续调用mpage_bio_submit函数请求整个page的数据 

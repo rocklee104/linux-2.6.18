@@ -300,20 +300,35 @@ struct ext2_inode {
 /*
  * Mount flags
  */
+//进行装载时检查
 #define EXT2_MOUNT_CHECK		0x000001  /* Do mount-time checks */
+//不使用新的Orlov分配器
 #define EXT2_MOUNT_OLDALLOC		0x000002  /* Don't use the new Orlov allocator */
+//在目录所在的块组中创建文件
 #define EXT2_MOUNT_GRPID		0x000004  /* Create files with directory's group */
+//一些调试信息
 #define EXT2_MOUNT_DEBUG		0x000008  /* Some debugging messages */
+//出现错误时继续
 #define EXT2_MOUNT_ERRORS_CONT		0x000010  /* Continue on errors */
+//遇到错误时，以只读方式重新装载文件系统
 #define EXT2_MOUNT_ERRORS_RO		0x000020  /* Remount fs ro on errors */
+//遇到错误时，进入kernel panic
 #define EXT2_MOUNT_ERRORS_PANIC		0x000040  /* Panic on errors */
+//模拟minix statfs
 #define EXT2_MOUNT_MINIX_DF		0x000080  /* Mimics the Minix statfs */
+//无buffer head
 #define EXT2_MOUNT_NOBH			0x000100  /* No buffer_heads */
+//禁用32位uid
 #define EXT2_MOUNT_NO_UID32		0x000200  /* Disable 32-bit UIDs */
+//扩展的用户属性
 #define EXT2_MOUNT_XATTR_USER		0x004000  /* Extended user attributes */
+//POSIX访问控制表
 #define EXT2_MOUNT_POSIX_ACL		0x008000  /* POSIX Access Control Lists */
+//就地执行
 #define EXT2_MOUNT_XIP			0x010000  /* Execute in place */
+//用户配额
 #define EXT2_MOUNT_USRQUOTA		0x020000 /* user quota */
+//组配额
 #define EXT2_MOUNT_GRPQUOTA		0x040000 /* group quota */
 
 
