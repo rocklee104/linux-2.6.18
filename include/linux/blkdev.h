@@ -450,7 +450,7 @@ struct request_queue
     unsigned short		max_phys_segments;
     //单个请求所能处理的最大硬段数(分散-聚集DMA操作中的最大不同内存区数)
 	unsigned short		max_hw_segments;
-	//扇区中以字节为单位的大小
+	//扇区中以字节为单位的大小，这是硬件中块的大小
 	unsigned short		hardsect_size;
 	//物理段的最大长度（以字节为单位）
 	unsigned int		max_segment_size;
@@ -849,6 +849,7 @@ static inline int bdev_dma_aligment(struct block_device *bdev)
 #define blk_started_io(nsects)	do { } while (0)
 
 /* assumes size > 256 */
+//size一般都不小于512，假设size > 256，这样可以减少8次位移
 static inline unsigned int blksize_bits(unsigned int size)
 {
 	unsigned int bits = 8;

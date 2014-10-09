@@ -1604,7 +1604,10 @@ out:
 	put_namespace(namespace);
 	return err;
 }
-
+/*
+ *data这个参数是具体文件系统在挂载时的特定选项，对于ext2来说有sb=n这个参数可以指定sb的位置， 
+ *虽然sb的默认位置是1。 
+*/
 asmlinkage long sys_mount(char __user * dev_name, char __user * dir_name,
 			  char __user * type, unsigned long flags,
 			  void __user * data)

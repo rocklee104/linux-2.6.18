@@ -1033,7 +1033,7 @@ struct super_block {
 	//进程挂起的等待队列,直到文件系统被解冻
 	wait_queue_head_t	s_wait_unfrozen;
 
-	//文件系统名称
+	//当sb与block设备相关时，s_id是设备名，sb与block无关时，s_id是文件系统名
 	char s_id[32];				/* Informational name */
 
 	//指向的定文件系统的sb信息的指针，比如ext2_sb_info就存这里

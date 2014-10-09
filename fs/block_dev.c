@@ -86,9 +86,11 @@ EXPORT_SYMBOL(set_blocksize);
 int sb_set_blocksize(struct super_block *sb, int size)
 {
 	if (set_blocksize(sb->s_bdev, size))
+		//size不符合要求
 		return 0;
 	/* If we get here, we know size is power of two
 	 * and it's value is between 512 and PAGE_SIZE */
+	//size符合要求
 	sb->s_blocksize = size;
 	sb->s_blocksize_bits = blksize_bits(size);
 	return sb->s_blocksize;
@@ -96,6 +98,7 @@ int sb_set_blocksize(struct super_block *sb, int size)
 
 EXPORT_SYMBOL(sb_set_blocksize);
 
+//保证设置的块大小大于等于硬件实际的block size
 int sb_min_blocksize(struct super_block *sb, int size)
 {
 	int minsize = bdev_hardsect_size(sb->s_bdev);

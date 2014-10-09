@@ -299,6 +299,10 @@ static struct export_operations ext2_export_ops = {
 	.get_dentry = ext2_get_dentry,
 };
 
+/*
+ *由于ext2文件系统可以在挂载时通过参数sb=n来指定super block的位置。
+ *需要检查sb=n这个参数来确定ext2的sb
+*/
 static unsigned long get_sb_block(void **data)
 {
 	unsigned long 	sb_block;
@@ -306,8 +310,11 @@ static unsigned long get_sb_block(void **data)
 
 	if (!options || strncmp(options, "sb=", 3) != 0)
 		return 1;	/* Default location */
+    //跳过"sb="这3个字符
 	options += 3;
+    //传入options的地址，会修改options的值，使其指向原options的末尾
 	sb_block = simple_strtoul(options, &options, 0);
+    //挂载选项以','分割
 	if (*options && *options != ',') {
 		printk("EXT2-fs: Invalid sb specification: %s\n",
 		       (char *) *data);
@@ -639,6 +646,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	struct ext2_super_block * es;
 	struct inode *root;
 	unsigned long block;
+    //获取sb的位置（以1k 的 block为单位）
 	unsigned long sb_block = get_sb_block(&data);
 	unsigned long logic_sb_block;
 	unsigned long offset = 0;
@@ -663,6 +671,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	 */
 	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
 	if (!blocksize) {
+        //如果BLOCK_SIZE不合法，报错退出
 		printk ("EXT2-fs: unable to set blocksize\n");
 		goto failed_sbi;
 	}
@@ -672,6 +681,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	 * calculate the offset.  
 	 */
 	if (blocksize != BLOCK_SIZE) {
+        //算出符合实际block size的sb block number 
 		logic_sb_block = (sb_block*BLOCK_SIZE) / blocksize;
 		offset = (sb_block*BLOCK_SIZE) % blocksize;
 	} else {

@@ -685,7 +685,9 @@ EXPORT_SYMBOL(kill_litter_super);
 
 static int set_bdev_super(struct super_block *s, void *data)
 {
+    //给block device对象赋值
 	s->s_bdev = data;
+    //给dev_t赋值
 	s->s_dev = s->s_bdev->bd_dev;
 	return 0;
 }
@@ -726,16 +728,23 @@ int get_sb_bdev(struct file_system_type *fs_type,
 	 * while we are mounting
 	 */
 	mutex_lock(&bdev->bd_mount_mutex);
-	//搜索文件系统的超级块对象链表,如果找到一个块设备相关的超级块,则返回它的地址,
-	//否则,分配并初始化一个新的超级块对象,把它插入到文件系统链表和超级块全局链表中,并返回其地址。
+    /*
+     *搜索文件系统的超级块对象链表,如果找到一个块设备相关的超级块,则返回它的地址, 
+     *否则,分配并初始化一个新的超级块对象,把它插入到文件系统链表和超级块全局链表中,并返回其地址。 
+     *这就是为什么例如/dev/sda1能挂载到不同挂载点，挂载后每个挂载点内容相同的原因。 
+    */
 	s = sget(fs_type, test_bdev_super, set_bdev_super, bdev);
 	mutex_unlock(&bdev->bd_mount_mutex);
 	if (IS_ERR(s))
 		goto error_s;
 
-	//如果为真,返回sb的地址
 	if (s->s_root) {
+        //如果为真,表示这个文件系统被挂载过了，需要调用一次close_bdev_excl，将第二次打开计数关闭。 
 		if ((flags ^ s->s_flags) & MS_RDONLY) {
+            /*
+             *如果一个设备已经被打开过一次，这次打开的标志在MS_RDONLY上和上次的不同， 
+             *即两次打开的标志一次是O_RDWR,一次是O_RDONLY，就返回错误
+            */
 			up_write(&s->s_umount);
 			deactivate_super(s);
 			error = -EBUSY;
