@@ -11,6 +11,7 @@
 
 #include <asm/pda.h>
 
+//获取cpu的数据区地址
 #define __per_cpu_offset(cpu) (cpu_pda(cpu)->data_offset)
 #define __my_cpu_offset() read_pda(data_offset)
 

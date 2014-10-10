@@ -463,8 +463,10 @@ EXPORT_SYMBOL(add_to_page_cache);
 int add_to_page_cache_lru(struct page *page, struct address_space *mapping,
 				pgoff_t offset, gfp_t gfp_mask)
 {
+    //将新分配的page加入页缓存
 	int ret = add_to_page_cache(page, mapping, offset, gfp_mask);
 	if (ret == 0)
+        //加入page的lru
 		lru_cache_add(page);
 	return ret;
 }

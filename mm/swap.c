@@ -139,6 +139,10 @@ void fastcall activate_page(struct page *page)
  * inactive,referenced		->	active,unreferenced
  * active,unreferenced		->	active,referenced
  */
+/*
+ *page 置换内存页面，激活过程：inactive->referenced->active 
+ *				  清退过程：active->referenced->inactive
+*/
 void fastcall mark_page_accessed(struct page *page)
 {
 	if (!PageActive(page) && PageReferenced(page) && PageLRU(page)) {

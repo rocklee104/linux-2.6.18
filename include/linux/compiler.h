@@ -68,6 +68,7 @@ extern void __chk_io_ptr(void __iomem *);
 #endif
 
 #ifndef RELOC_HIDE
+//在数据区起始（off），获取指针ptr的值
 # define RELOC_HIDE(ptr, off)					\
   ({ unsigned long __ptr;					\
      __ptr = (unsigned long) (ptr);				\

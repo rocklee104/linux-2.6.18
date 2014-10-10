@@ -382,6 +382,7 @@ asmlinkage long sys_fdatasync(unsigned int fd)
  * succeeds, there is no need to take private_lock. (But if
  * private_lock is contended then so is mapping->tree_lock).
  */
+//这个函数在页缓存中搜索符合条件的块缓存
 static struct buffer_head *
 __find_get_block_slow(struct block_device *bdev, sector_t block)
 {
@@ -394,6 +395,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
 	struct page *page;
 	int all_mapped = 1;
 
+    //在页缓存中搜索包含块缓存的页
 	index = block >> (PAGE_CACHE_SHIFT - bd_inode->i_blkbits);
 	page = find_get_page(bd_mapping, index);
 	if (!page)
@@ -401,16 +403,20 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
 
 	spin_lock(&bd_mapping->private_lock);
 	if (!page_has_buffers(page))
+        //页中没有与之关联的缓冲区
 		goto out_unlock;
+    //找到缓冲区链表的头
 	head = page_buffers(page);
 	bh = head;
 	do {
 		if (bh->b_blocknr == block) {
+            //如果块缓冲区的逻辑块号是请求的逻辑块号，返回这个缓冲区
 			ret = bh;
 			get_bh(bh);
 			goto out_unlock;
 		}
 		if (!buffer_mapped(bh))
+            //如果bh没有映射， all_mapped=0；
 			all_mapped = 0;
 		bh = bh->b_this_page;
 	} while (bh != head);
@@ -421,6 +427,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
 	 * elsewhere, don't buffer_error if we had some unmapped buffers
 	 */
 	if (all_mapped) {
+        //here is where i don't really understand
 		printk("__find_get_block_slow() failed. "
 			"block=%llu, b_blocknr=%llu\n",
 			(unsigned long long)block,
@@ -1140,6 +1147,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	struct page *page;
 	struct buffer_head *bh;
 
+    //在页缓存中搜索页面，如果不存在，则创建
 	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
 	if (!page)
 		return NULL;
@@ -1155,7 +1163,12 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 		if (!try_to_free_buffers(page))
 			goto failed;
 	}
-
+    /*
+     *如果page没有buffer,那就需要： 
+     *1.分配块缓冲 
+     *2.将块缓冲和page关联起来 
+     *3.设置bh的b_bdev和bh->b_blocknr
+    */
 	/*
 	 * Allocate some buffers for this page
 	 */
@@ -1169,6 +1182,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	 * run under the page lock.
 	 */
 	spin_lock(&inode->i_mapping->private_lock);
+    //将bh和page关联起来
 	link_dev_buffers(page, bh);
 	init_page_buffers(page, bdev, block, size);
 	spin_unlock(&inode->i_mapping->private_lock);
@@ -1202,7 +1216,12 @@ grow_buffers(struct block_device *bdev, sector_t block, int size)
 		sizebits++;
 	} while ((size << sizebits) < PAGE_SIZE);
 
+    /*
+     *size一般小于等于一个页。通过上面那个循环，可以得出2^sizebits个size等于一个页。 
+     *而size一般是一个block size大小。block >> sizebits就可以得到起始页号index。
+    */
 	index = block >> sizebits;
+    //block以页边界对齐
 	block = index << sizebits;
 
 	/* Create a page with the proper size buffers.. */
@@ -1374,6 +1393,7 @@ static inline void check_irqs_on(void)
 /*
  * The LRU management algorithm is dopey-but-simple.  Sorry.
  */
+//将新的缓冲头添加到缓存中。
 static void bh_lru_install(struct buffer_head *bh)
 {
 	struct buffer_head *evictee = NULL;
@@ -1388,11 +1408,13 @@ static void bh_lru_install(struct buffer_head *bh)
 		int out = 0;
 
 		get_bh(bh);
+        //将bh加入到lru的头部
 		bhs[out++] = bh;
 		for (in = 0; in < BH_LRU_SIZE; in++) {
 			struct buffer_head *bh2 = lru->bhs[in];
 
 			if (bh2 == bh) {
+                //如果bh已经存在lru中，就将原来已经存在的bh释放,将下一个lru->bhs[in]放入bhs[out]
 				__brelse(bh2);
 			} else {
 				if (out >= BH_LRU_SIZE) {
@@ -1404,12 +1426,15 @@ static void bh_lru_install(struct buffer_head *bh)
 			}
 		}
 		while (out < BH_LRU_SIZE)
+            //在lru->bhs[in]中有多个bh2 == bh
 			bhs[out++] = NULL;
+        //将新的lru数组赋值给bh_lrus
 		memcpy(lru->bhs, bhs, sizeof(bhs));
 	}
 	bh_lru_unlock();
 
 	if (evictee)
+        //lru中最末尾的成员，需要被释放
 		__brelse(evictee);
 }
 
@@ -1431,6 +1456,7 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, int size)
 
 		if (bh && bh->b_bdev == bdev &&
 				bh->b_blocknr == block && bh->b_size == size) {
+            //将符合条件的bh移动到lru的最前端
 			if (i) {
 				while (i) {
 					lru->bhs[i] = lru->bhs[i - 1];
@@ -1458,11 +1484,14 @@ __find_get_block(struct block_device *bdev, sector_t block, int size)
 	struct buffer_head *bh = lookup_bh_lru(bdev, block, size);
 
 	if (bh == NULL) {
+        //在lru中没有找到符合条件的bh，就在页缓存中搜索
 		bh = __find_get_block_slow(bdev, block);
 		if (bh)
+            //如果在页缓存中搜索到了符合条件的bh，就将其加入lru
 			bh_lru_install(bh);
 	}
 	if (bh)
+        //设置bh所在page的PG_referenced和PG_active标志
 		touch_buffer(bh);
 	return bh;
 }
