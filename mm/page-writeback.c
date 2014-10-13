@@ -701,6 +701,7 @@ EXPORT_SYMBOL(set_page_dirty_lock);
  * Clear a page's dirty flag, while caring for dirty memory accounting. 
  * Returns true if the page was previously dirty.
  */
+//需要清除：1.mapping中的tag 2.page本身的dirty flag
 int test_clear_page_dirty(struct page *page)
 {
 	struct address_space *mapping = page_mapping(page);

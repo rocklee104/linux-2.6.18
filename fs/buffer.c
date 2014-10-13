@@ -401,6 +401,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
 	if (!page)
 		goto out;
 
+    //与try_to_free_buffers互斥访问block device的mapping
 	spin_lock(&bd_mapping->private_lock);
 	if (!page_has_buffers(page))
         //页中没有与之关联的缓冲区
@@ -1112,6 +1113,7 @@ link_dev_buffers(struct page *page, struct buffer_head *head)
 /*
  * Initialise the state of a blockdev page's buffers.
  */ 
+//初始化buffers, 一般调用次函数的buffer均没有被map
 static void
 init_page_buffers(struct page *page, struct block_device *bdev,
 			sector_t block, int size)
@@ -1129,6 +1131,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
 				set_buffer_uptodate(bh);
 			set_buffer_mapped(bh);
 		}
+        //如果bh被map过了，就什么都不做，跳到下一个buffer
 		block++;
 		bh = bh->b_this_page;
 	} while (bh != head);
@@ -1160,6 +1163,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 			init_page_buffers(page, bdev, block, size);
 			return page;
 		}
+        //释放所有的buffer
 		if (!try_to_free_buffers(page))
 			goto failed;
 	}
@@ -1393,7 +1397,7 @@ static inline void check_irqs_on(void)
 /*
  * The LRU management algorithm is dopey-but-simple.  Sorry.
  */
-//将新的缓冲头添加到缓存中。
+//将新的缓冲头添加到LRU中
 static void bh_lru_install(struct buffer_head *bh)
 {
 	struct buffer_head *evictee = NULL;
@@ -3025,12 +3029,18 @@ int sync_dirty_buffer(struct buffer_head *bh)
  *
  * try_to_free_buffers() is non-blocking.
  */
+/*
+ *如果一个bh引用计数大于0，或者状态是dirty或者lock，说明这个bh busy
+*/
 static inline int buffer_busy(struct buffer_head *bh)
 {
 	return atomic_read(&bh->b_count) |
 		(bh->b_state & ((1 << BH_Dirty) | (1 << BH_Lock)));
 }
-
+/*
+ *移除与page相关的所有bufferhead,返回首个bh的地址， 
+ *后续需要这个地址来释放所有的bh,成功返回1，失败返回0。 
+*/
 static int
 drop_buffers(struct page *page, struct buffer_head **buffers_to_free)
 {
@@ -3038,28 +3048,34 @@ drop_buffers(struct page *page, struct buffer_head **buffers_to_free)
 	struct buffer_head *bh;
 
 	bh = head;
+    //step 1:检查page中的块缓存是否处于busy状态，如果busy, 返回0
 	do {
+        //buffer_write_io_error的定义为BUFFER_FNS(Write_EIO, write_io_error)
 		if (buffer_write_io_error(bh) && page->mapping)
+            //如果bh io 错误，并且page->mapping存在，就设置page->mapping的标志为io error
 			set_bit(AS_EIO, &page->mapping->flags);
 		if (buffer_busy(bh))
 			goto failed;
 		bh = bh->b_this_page;
 	} while (bh != head);
 
+    //step 2:将bh从mapping链表中取出
 	do {
 		struct buffer_head *next = bh->b_this_page;
 
 		if (!list_empty(&bh->b_assoc_buffers))
+            //如果此bh还关联了其他的mapping, 就将此bh从mapping链表中取出来
 			__remove_assoc_queue(bh);
 		bh = next;
 	} while (bh != head);
 	*buffers_to_free = head;
+    //step 3:将page->private清空
 	__clear_page_buffers(page);
 	return 1;
 failed:
 	return 0;
 }
-
+//return 1 succeed, return 0 failed
 int try_to_free_buffers(struct page *page)
 {
 	struct address_space * const mapping = page->mapping;
@@ -3071,10 +3087,12 @@ int try_to_free_buffers(struct page *page)
 		return 0;
 
 	if (mapping == NULL) {		/* can this still happen? */
+        //如果mapping == NULL, 那就不需要清除page在radix tree中的tag
 		ret = drop_buffers(page, &buffers_to_free);
 		goto out;
 	}
 
+    //因为要操作mapping中的radix tree,这里就需要对mapping加锁
 	spin_lock(&mapping->private_lock);
 	ret = drop_buffers(page, &buffers_to_free);
 	if (ret) {
@@ -3090,6 +3108,7 @@ int try_to_free_buffers(struct page *page)
 	}
 	spin_unlock(&mapping->private_lock);
 out:
+    //释放bh
 	if (buffers_to_free) {
 		struct buffer_head *bh = buffers_to_free;
 
