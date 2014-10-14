@@ -1113,7 +1113,7 @@ link_dev_buffers(struct page *page, struct buffer_head *head)
 /*
  * Initialise the state of a blockdev page's buffers.
  */ 
-//初始化buffers, 一般调用次函数的buffer均没有被map
+//初始化buffers, 一般调用此函数的buffer均没有被map
 static void
 init_page_buffers(struct page *page, struct block_device *bdev,
 			sector_t block, int size)
@@ -1150,7 +1150,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	struct page *page;
 	struct buffer_head *bh;
 
-    //在页缓存中搜索页面，如果不存在，则创建
+    //在页缓存中搜索页面，如果不存在，则创建。返回的page是加了锁的。
 	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
 	if (!page)
 		return NULL;
@@ -1158,12 +1158,14 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	BUG_ON(!PageLocked(page));
 
 	if (page_has_buffers(page)) {
+        //这里的page含有buffer, 一定是通过搜索找到的page
 		bh = page_buffers(page);
 		if (bh->b_size == size) {
+            //重新初始化page中的buffer
 			init_page_buffers(page, bdev, block, size);
 			return page;
 		}
-        //释放所有的buffer
+        //size不匹配，需要释放页内所有的buffer，重新分配大小为size的buffer
 		if (!try_to_free_buffers(page))
 			goto failed;
 	}
@@ -1232,6 +1234,7 @@ grow_buffers(struct block_device *bdev, sector_t block, int size)
 	page = grow_dev_page(bdev, block, index, size);
 	if (!page)
 		return 0;
+    //page操作完成，就应该unlock it
 	unlock_page(page);
 	page_cache_release(page);
 	return 1;
@@ -1253,8 +1256,11 @@ __getblk_slow(struct block_device *bdev, sector_t block, int size)
 	}
 
 	for (;;) {
-		struct buffer_head * bh;
-
+		struct buffer_head * bh;        
+        /*
+         *1.如果数据不在页缓存中，或虽然在页缓存中，但对应的页没有与之关联的缓冲区，返回NULL。 
+         *2.如果数据在页缓存中，且对应页有相关缓存区，则返回指向所要缓冲头的指针。
+        */
 		bh = __find_get_block(bdev, block, size);
 		if (bh)
 			return bh;
@@ -1350,6 +1356,10 @@ static struct buffer_head *__bread_slow(struct buffer_head *bh)
 		bh->b_end_io = end_buffer_read_sync;
 		submit_bh(READ, bh);
 		wait_on_buffer(bh);
+        /*
+         *正常情况下，当数据传输完成，b_end_io被调用，就会unlock_buffer, 
+         *并且buffer uptodate
+        */    
 		if (buffer_uptodate(bh))
 			return bh;
 	}
@@ -1550,9 +1560,11 @@ EXPORT_SYMBOL(__breadahead);
 struct buffer_head *
 __bread(struct block_device *bdev, sector_t block, int size)
 {
+    //搜索及建立符合条件的buffer
 	struct buffer_head *bh = __getblk(bdev, block, size);
 
 	if (likely(bh) && !buffer_uptodate(bh))
+        //如果buffer中的内容not uptodate, 就需要从通用块层中读取数据更新buffer
 		bh = __bread_slow(bh);
 	return bh;
 }

@@ -86,7 +86,7 @@ struct buffer_head {
 	bh_end_io_t *b_end_io;		/* I/O completion */
     //指向io完成方法数据的指针
  	void *b_private;		/* reserved for b_end_io */
-    //与某个索引节点相关的间接块的链表提供的指针
+    //链表成员，链表头是(&inode->i_data)->private_list
 	struct list_head b_assoc_buffers; /* associated with another mapping */
 	atomic_t b_count;		/* users using this buffer_head */
 };
@@ -322,7 +322,7 @@ static inline void wait_on_buffer(struct buffer_head *bh)
 static inline void lock_buffer(struct buffer_head *bh)
 {
 	might_sleep();
-    //如果buffer中被置位BH_Lock, 就调用__lock_buffer，否则置位BH_Lock，然后退出
+    //如果buffer中被置位BH_Lock, 就调用__lock_buffer(等待能够置位bh)，否则置位BH_Lock，然后退出
 	if (test_set_buffer_locked(bh))
 		__lock_buffer(bh);
 }

@@ -117,7 +117,7 @@ struct bio {
 	unsigned int		bi_max_vecs;	/* max bvl_vecs we can hold */
 	//指向bio的bio_vec数组中的段的指针
 	struct bio_vec		*bi_io_vec;	/* the actual vec list */
-	//bio的io操作结束时调用的方法
+	//bio的io操作结束时调用的方法，比如读取磁盘数据，在dma将数据拷贝到指定page后就会调用这个回调函数
 	bio_end_io_t		*bi_end_io;
 	//bio的引用计数器
 	atomic_t		bi_cnt;		/* pin count */

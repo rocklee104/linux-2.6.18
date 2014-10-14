@@ -440,7 +440,7 @@ struct address_space {
 	struct backing_dev_info *backing_dev_info; /* device readahead, etc */
     //通常是管理private_list链表时使用的自旋锁
 	spinlock_t		private_lock;	/* for use by the address_space */
-    //通常是与inode相关的间接块的脏缓冲区的链表
+    //链表头，通常连接与inode相关的间接块的脏缓冲区的链表，链表成员是bh->b_assoc_buffers
 	struct list_head	private_list;	/* ditto */
     //通常是指向间接块所在块设备的addreee_space对象的指针
 	struct address_space	*assoc_mapping;	/* ditto */

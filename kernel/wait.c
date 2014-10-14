@@ -188,14 +188,24 @@ int __sched fastcall out_of_line_wait_on_bit(void *word, int bit,
 EXPORT_SYMBOL(out_of_line_wait_on_bit);
 
 int __sched fastcall
+/*
+ *1.将q加入等待队列wq 
+ *2.判断q->key.flags中第q->key.bit_nr位是否被置位： 
+ *  a.如果被置位就执行action(一般类似于schedule的休眠),等到其他进程唤醒等待队列的时候，
+ *    就调用test_and_set_bit看是否置位，如果还是置位，返回1,循环继续。
+ *  b.如果没有被置位，就不执行action,调用test_and_set_bit置位。
+ *    由于test_bit测试过没有没有置位，test_and_set_bit将会返回0,循环退出。
+ *3.将q->wait移除等待队列
+*/
 __wait_on_bit_lock(wait_queue_head_t *wq, struct wait_bit_queue *q,
 			int (*action)(void *), unsigned mode)
 {
 	int ret = 0;
 
 	do {
-		prepare_to_wait_exclusive(wq, &q->wait, mode);
+		prepare_to_wait_exclusive(wq, &q->wait, mode);	
 		if (test_bit(q->key.bit_nr, q->key.flags)) {
+			//如果q->key.flags中第q->key.bit_nr位被置位
 			if ((ret = (*action)(q->key.flags)))
 				break;
 		}
