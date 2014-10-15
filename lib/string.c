@@ -450,6 +450,7 @@ EXPORT_SYMBOL(strpbrk);
  * of that name. In fact, it was stolen from glibc2 and de-fancy-fied.
  * Same semantics, slimmer shape. ;)
  */
+//分解字符串为一组字符串
 char *strsep(char **s, const char *ct)
 {
 	char *sbegin = *s;
@@ -460,8 +461,11 @@ char *strsep(char **s, const char *ct)
 
 	end = strpbrk(sbegin, ct);
 	if (end)
+		//先解引用再自加
 		*end++ = '\0';
+	//修改了s, 使其指向下个子字符串的首地址
 	*s = end;
+	//返回第一个子字符串的首地址
 	return sbegin;
 }
 EXPORT_SYMBOL(strsep);

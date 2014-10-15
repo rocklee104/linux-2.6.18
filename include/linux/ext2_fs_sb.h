@@ -34,6 +34,7 @@ struct ext2_sb_info {
 	unsigned long s_desc_per_block;	/* Number of group descriptors per block */
 	unsigned long s_groups_count;	/* Number of groups in the fs */
 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+    //磁盘中的sb信息会读取到s_es中
 	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
 	struct buffer_head ** s_group_desc;
 	//保存了挂载选项, mount flags

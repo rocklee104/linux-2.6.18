@@ -14,6 +14,7 @@ struct match_token {
 	char *pattern;
 };
 
+//match_table_t在声明的时候必须给数组成员赋值。
 typedef struct match_token match_table_t[];
 
 /* Maximum number of arguments that match_token will find in a pattern */

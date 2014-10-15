@@ -22,6 +22,12 @@
  * match extremely simple token=arg style patterns. If the pattern is found,
  * the location(s) of the arguments will be returned in the @args array.
  */
+ /*
+  *这个函数比较s是否匹配p中的字符串。如果 
+  *1.s, p均是字符串，就使用strcmp比较 
+  *2.s中含有数字，例如 s = "xxx 5", p = "xxx %d"
+  *  这也是可以匹配的。但是%最多有3个 。数字的起始记录在args[]中。
+ */
 static int match_one(char *s, char *p, substring_t args[])
 {
 	char *meta;
@@ -34,17 +40,22 @@ static int match_one(char *s, char *p, substring_t args[])
 		int len = -1;
 		meta = strchr(p, '%');
 		if (!meta)
+            //普通字符串比较就使用strcmp
 			return strcmp(p, s) == 0;
-
+        
+        //如果meta-p == 0，strncmp总是返回0 
 		if (strncmp(p, s, meta-p))
+            //%之前的字符串不相等。
 			return 0;
 
 		s += meta - p;
 		p = meta + 1;
 
 		if (isdigit(*p))
+            //处理例如%5s这种格式
 			len = simple_strtoul(p, &p, 10);
 		else if (*p == '%') {
+            //处理单纯的字符"%"
 			if (*s++ != '%')
 				return 0;
 			p++;
@@ -61,6 +72,7 @@ static int match_one(char *s, char *p, substring_t args[])
 				return 0;
 			else if (len == -1 || len > strlen(s))
 				len = strlen(s);
+            //处理例如跳过%4s这种格式的前的4个空格
 			args[argc].to = s + len;
 			break;
 		case 'd':
@@ -100,6 +112,9 @@ static int match_one(char *s, char *p, substring_t args[])
  * format identifiers which will be taken into account when matching the
  * tokens, and whose locations will be returned in the @args array.
  */
+/*
+ *这个函数用于在struct match_token中搜索和与s匹配的token(整形)
+*/
 int match_token(char *s, match_table_t table, substring_t args[])
 {
 	struct match_token *p;
@@ -120,6 +135,7 @@ int match_token(char *s, match_table_t table, substring_t args[])
  * as a number in that base. On success, sets @result to the integer represented
  * by the string and returns 0. Returns either -ENOMEM or -EINVAL on failure.
  */
+//将substring_t中保存的数字字符串，转换成int型
 static int match_number(substring_t *s, int *result, int base)
 {
 	char *endp;
@@ -134,6 +150,7 @@ static int match_number(substring_t *s, int *result, int base)
 	*result = simple_strtol(buf, &endp, base);
 	ret = 0;
 	if (endp == buf)
+        //substring_t中字符串长度为0
 		ret = -EINVAL;
 	kfree(buf);
 	return ret;

@@ -335,6 +335,7 @@ enum {
 	Opt_usrquota, Opt_grpquota
 };
 
+//ext2文件系统特有的挂载选项，在man mount中，xip这个选项不存在，其他的均存在
 static match_table_t tokens = {
 	{Opt_bsd_df, "bsddf"},
 	{Opt_minix_df, "minixdf"},
@@ -367,6 +368,7 @@ static match_table_t tokens = {
 	{Opt_err, NULL}
 };
 
+//解析挂载选项options，给sbi赋值
 static int parse_options (char * options,
 			  struct ext2_sb_info *sbi)
 {
@@ -378,9 +380,11 @@ static int parse_options (char * options,
 	if (!options)
 		return 1;
 
+    //p指向子字符串首地址
 	while ((p = strsep (&options, ",")) != NULL) {
 		int token;
 		if (!*p)
+            //p为空，继续下个自字符串
 			continue;
 
 		token = match_token(p, tokens, args);
@@ -397,7 +401,8 @@ static int parse_options (char * options,
 		case Opt_nogrpid:
 			clear_opt (sbi->s_mount_opt, GRPID);
 			break;
-		case Opt_resuid:
+        case Opt_resuid:
+            //将args[0]中的字符串转换成整形，赋值给option
 			if (match_int(&args[0], &option))
 				return 0;
 			sbi->s_resuid = option;
@@ -669,6 +674,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	 * This is important for devices that have a hardware
 	 * sectorsize that is larger than the default.
 	 */
+    //设置sb->s_blocksize
 	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
 	if (!blocksize) {
         //如果BLOCK_SIZE不合法，报错退出
@@ -681,13 +687,14 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	 * calculate the offset.  
 	 */
 	if (blocksize != BLOCK_SIZE) {
-        //算出符合实际block size的sb block number 
+        //算出符合实际block size的sb block number，因为这个sb_block是以1KB为单位的。
 		logic_sb_block = (sb_block*BLOCK_SIZE) / blocksize;
 		offset = (sb_block*BLOCK_SIZE) % blocksize;
 	} else {
 		logic_sb_block = sb_block;
 	}
 
+    //获取含有sb信息的buffer
 	if (!(bh = sb_bread(sb, logic_sb_block))) {
 		printk ("EXT2-fs: unable to read superblock\n");
 		goto failed_sbi;
@@ -707,26 +714,36 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	def_mount_opts = le32_to_cpu(es->s_default_mount_opts);
 	if (def_mount_opts & EXT2_DEFM_DEBUG)
 		set_opt(sbi->s_mount_opt, DEBUG);
+    //在目录所在的块组中创建文件
 	if (def_mount_opts & EXT2_DEFM_BSDGROUPS)
 		set_opt(sbi->s_mount_opt, GRPID);
+    //禁用32位uid
 	if (def_mount_opts & EXT2_DEFM_UID16)
 		set_opt(sbi->s_mount_opt, NO_UID32);
+    //扩展的用户属性
 	if (def_mount_opts & EXT2_DEFM_XATTR_USER)
 		set_opt(sbi->s_mount_opt, XATTR_USER);
+    //POSIX访问控制表
 	if (def_mount_opts & EXT2_DEFM_ACL)
 		set_opt(sbi->s_mount_opt, POSIX_ACL);
-	
+    
+	//遇到错误时，进入kernel panic
 	if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_PANIC)
 		set_opt(sbi->s_mount_opt, ERRORS_PANIC);
+    //遇到错误时，以只读方式重新装载文件系统
 	else if (le16_to_cpu(sbi->s_es->s_errors) == EXT2_ERRORS_RO)
 		set_opt(sbi->s_mount_opt, ERRORS_RO);
 
+    /* Default uid for reserved blocks */
 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
+    /* Default gid for reserved blocks */
 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
 	
+    //将data中的挂载选项给sbi赋值
 	if (!parse_options ((char *) data, sbi))
 		goto failed_mount;
 
+    //sb中的MS_POSIXACL标志由s_mount_opt决定
 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
 		((EXT2_SB(sb)->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ?
 		 MS_POSIXACL : 0);
@@ -738,6 +755,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	    (EXT2_HAS_COMPAT_FEATURE(sb, ~0U) ||
 	     EXT2_HAS_RO_COMPAT_FEATURE(sb, ~0U) ||
 	     EXT2_HAS_INCOMPAT_FEATURE(sb, ~0U)))
+        //rev 0不支持这些兼容特性，兼容特性是rev 1才引入的。
 		printk("EXT2-fs warning: feature flags set on rev 0 fs, "
 		       "running e2fsck is recommended\n");
 	/*
@@ -773,6 +791,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	if (sb->s_blocksize != blocksize) {
 		brelse(bh);
 
+        //更新sb->s_blocksize
 		if (!sb_set_blocksize(sb, blocksize)) {
 			printk(KERN_ERR "EXT2-fs: blocksize too small for device.\n");
 			goto failed_sbi;
