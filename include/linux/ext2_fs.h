@@ -97,6 +97,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
 #else
 # define EXT2_BLOCK_SIZE(s)		(EXT2_MIN_BLOCK_SIZE << (s)->s_log_block_size)
 #endif
+//一个块中块地址编号的数量，块地址编号为4byte
 #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
 #ifdef __KERNEL__
 # define EXT2_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
@@ -155,6 +156,7 @@ struct ext2_group_desc
 # define EXT2_DESC_PER_BLOCK_BITS(s)	(EXT2_SB(s)->s_desc_per_block_bits)
 #else
 # define EXT2_BLOCKS_PER_GROUP(s)	((s)->s_blocks_per_group)
+//一个块中可以容纳多少个组描述符
 # define EXT2_DESC_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_group_desc))
 # define EXT2_INODES_PER_GROUP(s)	((s)->s_inodes_per_group)
 #endif
@@ -360,6 +362,7 @@ struct ext2_super_block {
 	__le32	s_free_blocks_count;	/* Free blocks count *//*including s_r_blocks_count */
 	
 	__le32	s_free_inodes_count;	/* Free inodes count */
+	//由于superblock的位置在开始的1KB处，当block size为1KB时，此值为1，当block size大于1KB时，此值为0
 	__le32	s_first_data_block;	/* First Data Block *//*depends on block size, may be 0 or 1*/
 	__le32	s_log_block_size;	/* Block size *//*block size = 1024 << s_log_block_size */
 	__le32	s_log_frag_size;	/* Fragment size */
@@ -482,20 +485,26 @@ struct ext2_super_block {
 #define EXT2_FEATURE_COMPAT_DIR_PREALLOC	0x0001
 #define EXT2_FEATURE_COMPAT_IMAGIC_INODES	0x0002
 #define EXT3_FEATURE_COMPAT_HAS_JOURNAL		0x0004
+//Extended attribute blocks 
 #define EXT2_FEATURE_COMPAT_EXT_ATTR		0x0008
 #define EXT2_FEATURE_COMPAT_RESIZE_INO		0x0010
+//Hash-indexed directories
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_ANY			0xffffffff
 
+//Reduced superblock backups
 #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
+//Files larger than 2GiB in size
 #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
 #define EXT2_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
 #define EXT2_FEATURE_RO_COMPAT_ANY		0xffffffff
 
 #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
+//File type in directory entries
 #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
 #define EXT3_FEATURE_INCOMPAT_RECOVER		0x0004
 #define EXT3_FEATURE_INCOMPAT_JOURNAL_DEV	0x0008
+//Reduced block group backups
 #define EXT2_FEATURE_INCOMPAT_META_BG		0x0010
 #define EXT2_FEATURE_INCOMPAT_ANY		0xffffffff
 

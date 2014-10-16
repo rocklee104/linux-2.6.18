@@ -591,6 +591,7 @@ block_in_use(unsigned long block, struct super_block *sb, unsigned char *map)
 			 EXT2_BLOCKS_PER_GROUP(sb), map);
 }
 
+//测试a是否是b的n次方
 static inline int test_root(int a, int b)
 {
 	int num = b;
@@ -603,7 +604,9 @@ static inline int test_root(int a, int b)
 static int ext2_group_sparse(int group)
 {
 	if (group <= 1)
+		//group 0中肯定有sb
 		return 1;
+	//测试group是否是3^n,5^n,7^n
 	return (test_root(group, 3) || test_root(group, 5) ||
 		test_root(group, 7));
 }
@@ -616,10 +619,15 @@ static int ext2_group_sparse(int group)
  *	Return the number of blocks used by the superblock (primary or backup)
  *	in this group.  Currently this will be only 0 or 1.
  */
+//测试一个group中是否记录了super block
 int ext2_bg_has_super(struct super_block *sb, int group)
 {
 	if (EXT2_HAS_RO_COMPAT_FEATURE(sb,EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)&&
 	    !ext2_group_sparse(group))
+		/*
+		 *默认情况下，每个group都会有sb。开启了sparse模式后，只有3^n,5^n,7^n有sb备份。 
+		 *如果开启了sparse,并且组号不是3^n,5^n,7^n, 组内肯定没有sb
+		*/
 		return 0;
 	return 1;
 }

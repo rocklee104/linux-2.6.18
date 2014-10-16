@@ -613,11 +613,17 @@ static loff_t ext2_max_size(int bits)
 	 * dense, 4k-blocksize file such that the total number of
 	 * sectors in the file, including data and all indirect blocks,
 	 * does not exceed 2^32. */
+    //文件大小超过0x1ff7fffd000LL会造成溢出，具体看邮件lkml，目前不做探讨
+    //http://lkml.iu.edu/hypermail/linux/kernel/0503.2/0438.html
 	const loff_t upper_limit = 0x1ff7fffd000LL;
 
+    //一条block no的记录占4个字节，这里是间接块的数量
 	res += 1LL << (bits-2);
+    //2级间接块的数量
 	res += 1LL << (2*(bits-2));
+    //3级间接块的数量
 	res += 1LL << (3*(bits-2));
+    //文件大小
 	res <<= bits;
 	if (res > upper_limit)
 		res = upper_limit;
@@ -674,14 +680,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	 * This is important for devices that have a hardware
 	 * sectorsize that is larger than the default.
 	 */
-    //设置sb->s_blocksize
+    //设置sb->s_blocksize, 最小1KB
 	blocksize = sb_min_blocksize(sb, BLOCK_SIZE);
 	if (!blocksize) {
         //如果BLOCK_SIZE不合法，报错退出
 		printk ("EXT2-fs: unable to set blocksize\n");
 		goto failed_sbi;
 	}
-
 	/*
 	 * If the superblock doesn't start on a hardware sector boundary,
 	 * calculate the offset.  
@@ -693,8 +698,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	} else {
 		logic_sb_block = sb_block;
 	}
-
-    //获取含有sb信息的buffer
+    //获取含有sb信息的buffer, 第一次读取，设block size是1kb大小的，这里logic_sb_block总是1
 	if (!(bh = sb_bread(sb, logic_sb_block))) {
 		printk ("EXT2-fs: unable to read superblock\n");
 		goto failed_sbi;
@@ -788,6 +792,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	}
 
 	/* If the blocksize doesn't match, re-read the thing.. */
+    //第二次读取，获取实际的block size, 第一次假设block size为1kb, 第二次有可能为4kb
 	if (sb->s_blocksize != blocksize) {
 		brelse(bh);
 
@@ -816,14 +821,22 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_maxbytes = ext2_max_size(sb->s_blocksize_bits);
 
 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV) {
+        //rev 0中的inode size, 及第一个可用的inode是固定的
 		sbi->s_inode_size = EXT2_GOOD_OLD_INODE_SIZE;
 		sbi->s_first_ino = EXT2_GOOD_OLD_FIRST_INO;
 	} else {
+        //rev 1中的inode size, 及第一个可用的inode是可以指定的
 		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
 		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
 		if ((sbi->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE) ||
 		    (sbi->s_inode_size & (sbi->s_inode_size - 1)) ||
 		    (sbi->s_inode_size > blocksize)) {
+            /*
+             * inode size有如下要求：
+             * 1.不能小于rev 0中的inode size
+             * 2.必须以s_inode_size对齐
+             * 3.不能大于block size
+             */
 			printk ("EXT2-fs: unsupported inode size: %d\n",
 				sbi->s_inode_size);
 			goto failed_mount;
@@ -834,8 +847,10 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 				   le32_to_cpu(es->s_log_frag_size);
 	if (sbi->s_frag_size == 0)
 		goto cantfind_ext2;
+    //一个block中fragment的数量
 	sbi->s_frags_per_block = sb->s_blocksize / sbi->s_frag_size;
 
+    //一个group中的block数量
 	sbi->s_blocks_per_group = le32_to_cpu(es->s_blocks_per_group);
 	sbi->s_frags_per_group = le32_to_cpu(es->s_frags_per_group);
 	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
@@ -860,6 +875,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		goto cantfind_ext2;
 
 	if (sb->s_blocksize != bh->b_size) {
+        //个人认为这里不太可能发生
 		if (!silent)
 			printk ("VFS: Unsupported blocksize on dev "
 				"%s.\n", sb->s_id);
@@ -873,6 +889,10 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	}
 
 	if (sbi->s_blocks_per_group > sb->s_blocksize * 8) {
+        /*
+         *一个group中的block总数为block size * 8。因为块位图占用一个block， 
+         *一个block总共有block size * 8位 
+        */   
 		printk ("EXT2-fs: #blocks per group too big: %lu\n",
 			sbi->s_blocks_per_group);
 		goto failed_mount;
@@ -883,6 +903,10 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		goto failed_mount;
 	}
 	if (sbi->s_inodes_per_group > sb->s_blocksize * 8) {
+        /*
+         *一个group中的inode总数为block size * 8。inode位图占用一个block，
+         *一个block总共有block size * 8位 
+        */  
 		printk ("EXT2-fs: #inodes per group too big: %lu\n",
 			sbi->s_inodes_per_group);
 		goto failed_mount;
@@ -890,10 +914,15 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 
 	if (EXT2_BLOCKS_PER_GROUP(sb) == 0)
 		goto cantfind_ext2;
+    /*
+     *文件系统中group的数量=(block总数-第一个数据块的位置+每组block数量-1)/每组block数量 
+     *其实也就是以每组block数量对齐 
+    */
 	sbi->s_groups_count = (le32_to_cpu(es->s_blocks_count) -
 				        le32_to_cpu(es->s_first_data_block) +
 				       EXT2_BLOCKS_PER_GROUP(sb) - 1) /
 				       EXT2_BLOCKS_PER_GROUP(sb);
+    //组描述符的占用block的个数，以每个块中组描述符的数量对齐
 	db_count = (sbi->s_groups_count + EXT2_DESC_PER_BLOCK(sb) - 1) /
 		   EXT2_DESC_PER_BLOCK(sb);
 	sbi->s_group_desc = kmalloc (db_count * sizeof (struct buffer_head *), GFP_KERNEL);

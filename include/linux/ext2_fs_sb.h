@@ -36,6 +36,7 @@ struct ext2_sb_info {
 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
     //磁盘中的sb信息会读取到s_es中
 	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
+    //一个buffer_head *数组，保存组描述符表
 	struct buffer_head ** s_group_desc;
 	//保存了挂载选项, mount flags
 	unsigned long  s_mount_opt;
