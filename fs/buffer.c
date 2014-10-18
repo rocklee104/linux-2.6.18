@@ -1308,6 +1308,7 @@ __getblk_slow(struct block_device *bdev, sector_t block, int size)
 void fastcall mark_buffer_dirty(struct buffer_head *bh)
 {
 	if (!buffer_dirty(bh) && !test_set_buffer_dirty(bh))
+        //buffer本身不dirty, 设置buffer dirty成功
 		__set_page_dirty_nobuffers(bh->b_page);
 }
 

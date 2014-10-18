@@ -35,6 +35,7 @@
 
 #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
 
+//获取group desc内容
 struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
 					     unsigned int block_group,
 					     struct buffer_head ** bh)
@@ -53,7 +54,9 @@ struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
 		return NULL;
 	}
 
+	//group descriptor所在的block
 	group_desc = block_group >> EXT2_DESC_PER_BLOCK_BITS(sb);
+	//group descriptor所在的block内的偏移
 	offset = block_group & (EXT2_DESC_PER_BLOCK(sb) - 1);
 	if (!sbi->s_group_desc[group_desc]) {
 		ext2_error (sb, "ext2_get_group_desc",
@@ -574,6 +577,7 @@ unsigned long ext2_count_free_blocks (struct super_block * sb)
 	return bitmap_count;
 #else
         for (i = 0; i < EXT2_SB(sb)->s_groups_count; i++) {
+			//将每个group内的free blocks进行累加，得到系统的free blocks
                 desc = ext2_get_group_desc (sb, i, NULL);
                 if (!desc)
                         continue;

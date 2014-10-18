@@ -521,22 +521,32 @@ static int ext2_setup_super (struct super_block * sb,
 	if (read_only)
 		return res;
 	if (!(sbi->s_mount_state & EXT2_VALID_FS))
+        //上次卸载时不干净
 		printk ("EXT2-fs warning: mounting unchecked fs, "
 			"running e2fsck is recommended\n");
 	else if ((sbi->s_mount_state & EXT2_ERROR_FS))
+        //出现错误
 		printk ("EXT2-fs warning: mounting fs with errors, "
 			"running e2fsck is recommended\n");
+    //将无符号的s_max_mnt_count转成有符号的short型，只有当s_max_mnt_count大于0，表示有效
 	else if ((__s16) le16_to_cpu(es->s_max_mnt_count) >= 0 &&
 		 le16_to_cpu(es->s_mnt_count) >=
 		 (unsigned short) (__s16) le16_to_cpu(es->s_max_mnt_count))
+        //挂载次数超过限制
 		printk ("EXT2-fs warning: maximal mount count reached, "
 			"running e2fsck is recommended\n");
+    //s_checkinterval大于0表示有效
 	else if (le32_to_cpu(es->s_checkinterval) &&
 		(le32_to_cpu(es->s_lastcheck) + le32_to_cpu(es->s_checkinterval) <= get_seconds()))
+        //当前的时间超过了时间间隔
 		printk ("EXT2-fs warning: checktime reached, "
 			"running e2fsck is recommended\n");
 	if (!le16_to_cpu(es->s_max_mnt_count))
+        /*
+         *如果s_max_mnt_count == 0,就给s_max_mnt_count设置为EXT2_DFL_MAX_MNT_COUNT。
+        */
 		es->s_max_mnt_count = cpu_to_le16(EXT2_DFL_MAX_MNT_COUNT);
+    //每次挂载时s_mnt_count加1，然后更新到磁盘上。
 	es->s_mnt_count=cpu_to_le16(le16_to_cpu(es->s_mnt_count) + 1);
 	ext2_write_super(sb);
 	if (test_opt (sb, DEBUG))
@@ -551,6 +561,7 @@ static int ext2_setup_super (struct super_block * sb,
 	return res;
 }
 
+//检查每个组的记录是否超过group大小界限
 static int ext2_check_descriptors (struct super_block * sb)
 {
 	int i;
@@ -564,10 +575,12 @@ static int ext2_check_descriptors (struct super_block * sb)
 	for (i = 0; i < sbi->s_groups_count; i++)
 	{
 		if ((i % EXT2_DESC_PER_BLOCK(sb)) == 0)
+            //组描述符每block读取一次，获取一个block的组描述符
 			gdp = (struct ext2_group_desc *) sbi->s_group_desc[desc_block++]->b_data;
 		if (le32_to_cpu(gdp->bg_block_bitmap) < block ||
 		    le32_to_cpu(gdp->bg_block_bitmap) >= block + EXT2_BLOCKS_PER_GROUP(sb))
 		{
+            //bg_block_bitmap必须在group内的block才有效
 			ext2_error (sb, "ext2_check_descriptors",
 				    "Block bitmap for group %d"
 				    " not in group (block %lu)!",
@@ -593,6 +606,7 @@ static int ext2_check_descriptors (struct super_block * sb)
 				    i, (unsigned long) le32_to_cpu(gdp->bg_inode_table));
 			return 0;
 		}
+        //block记录每组第一个block的位置
 		block += EXT2_BLOCKS_PER_GROUP(sb);
 		gdp++;
 	}
@@ -639,14 +653,23 @@ static unsigned long descriptor_loc(struct super_block *sb,
 	int has_super = 0;
 	
 	first_data_block = le32_to_cpu(sbi->s_es->s_first_data_block);
+    //first_meta_bg一般为0
 	first_meta_bg = le32_to_cpu(sbi->s_es->s_first_meta_bg);
-
+    
+    //目前内核支持的不兼容特性只有META_BG和FILETYPE，检查是否开启META_BG
 	if (!EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_META_BG) ||
 	    nr < first_meta_bg)
+        //没有开启META_BG或者nr < first_meta_bg(不太可能)。由于sb占用一个block, 故这里加1
 		return (logic_sb_block + nr + 1);
+    //开启META_BG并且nr >= first_meta_bg
 	bg = sbi->s_desc_per_block * nr;
 	if (ext2_bg_has_super(sb, bg))
 		has_super = 1;
+    /*
+     *meta block group的组描述符保存在第一个group的组描述符表的block， 
+     *这个block中的所有group组成meta block group。meta 
+     *bg的组描述符备份保存在第二个group及最后一个block中。 
+     */
 	return (first_data_block + has_super + (bg * sbi->s_blocks_per_group));
 }
 
@@ -942,6 +965,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		block = descriptor_loc(sb, logic_sb_block, i);
 		sbi->s_group_desc[i] = sb_bread(sb, block);
 		if (!sbi->s_group_desc[i]) {
+            //只要有-个组描述符表在的block读取错误就将前面获取的bh全部释放
 			for (j = 0; j < i; j++)
 				brelse (sbi->s_group_desc[j]);
 			printk ("EXT2-fs: unable to read group descriptors\n");
@@ -952,7 +976,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		printk ("EXT2-fs: group descriptors corrupted!\n");
 		goto failed_mount2;
 	}
+    //组描述符占用的block数量
 	sbi->s_gdb_count = db_count;
+    //s_next_generation需要随机数？
 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
 	spin_lock_init(&sbi->s_next_gen_lock);
 
@@ -976,6 +1002,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 		goto failed_mount3;
 	}
 	if (!S_ISDIR(root->i_mode) || !root->i_blocks || !root->i_size) {
+        //检查根目录的inode, 其mode必须是dir, 所在的block，及大小不能为0.
 		dput(sb->s_root);
 		sb->s_root = NULL;
 		printk(KERN_ERR "EXT2-fs: corrupt root inode, run e2fsck\n");
@@ -1044,14 +1071,17 @@ void ext2_write_super (struct super_block * sb)
 	struct ext2_super_block * es;
 	lock_kernel();
 	if (!(sb->s_flags & MS_RDONLY)) {
+        //只有文件系统可写时，才能更新sb
 		es = EXT2_SB(sb)->s_es;
 
 		if (le16_to_cpu(es->s_state) & EXT2_VALID_FS) {
 			ext2_debug ("setting valid to 0\n");
+            //清除EXT2_VALID_FS标志
 			es->s_state = cpu_to_le16(le16_to_cpu(es->s_state) &
 						  ~EXT2_VALID_FS);
 			es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
 			es->s_free_inodes_count = cpu_to_le32(ext2_count_free_inodes(sb));
+            //修改挂载时间
 			es->s_mtime = cpu_to_le32(get_seconds());
 			ext2_sync_super(sb, es);
 		} else

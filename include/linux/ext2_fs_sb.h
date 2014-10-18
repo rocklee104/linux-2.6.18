@@ -47,7 +47,7 @@ struct ext2_sb_info {
 	unsigned short s_pad;
     //块地址编号的位bit数, 也就是一个block可以容纳2 ^ s_addr_per_block_bits个块地址
 	int s_addr_per_block_bits;
-    //每个block中组描述符数
+    //每个block中组描述符数以bit表示
 	int s_desc_per_block_bits;
 	int s_inode_size;
 	int s_first_ino;

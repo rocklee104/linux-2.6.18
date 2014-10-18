@@ -379,13 +379,14 @@ struct ext2_super_block {
 	__le32	s_wtime;		/* Write time *//*这个值以秒为单位*/
 	
 	__le16	s_mnt_count;		/* Mount count */
-	__le16	s_max_mnt_count;	/* Maximal mount count *//*debuge2fs 中打印Maximum mount count:      -1,  这里其实是0xff*/
+	__le16	s_max_mnt_count;	/* Maximal mount count *//*debuge2fs 中打印Maximum mount count: -1,  这里其实是0xff*/
 	__le16	s_magic;		/* Magic signature */
 	__le16	s_state;		/* File system state */
 	__le16	s_errors;		/* Behaviour when detecting errors */
 	__le16	s_minor_rev_level; 	/* minor revision level */
 	
 	__le32	s_lastcheck;		/* time of last check */
+	//以秒为单位
 	__le32	s_checkinterval;	/* max. time between checks */
 	__le32	s_creator_os;		/* OS */
 	__le32	s_rev_level;		/* Revision level */
@@ -455,6 +456,7 @@ struct ext2_super_block {
 #define EXT2_DYNAMIC_REV	1 	/* V2 format w/ dynamic inode sizes */
 
 #define EXT2_CURRENT_REV	EXT2_GOOD_OLD_REV
+//kernel文件系统支持的最新的版本
 #define EXT2_MAX_SUPP_REV	EXT2_DYNAMIC_REV
 
 #define EXT2_GOOD_OLD_INODE_SIZE 128
@@ -482,35 +484,49 @@ struct ext2_super_block {
 #define EXT2_CLEAR_INCOMPAT_FEATURE(sb,mask)			\
 	EXT2_SB(sb)->s_es->s_feature_incompat &= ~cpu_to_le32(mask)
 
+//Block pre-allocation for new directories
 #define EXT2_FEATURE_COMPAT_DIR_PREALLOC	0x0001
 #define EXT2_FEATURE_COMPAT_IMAGIC_INODES	0x0002
+//An Ext3 journal exist
 #define EXT3_FEATURE_COMPAT_HAS_JOURNAL		0x0004
-//Extended attribute blocks 
+//Extended inode attributes are present
 #define EXT2_FEATURE_COMPAT_EXT_ATTR		0x0008
+//Non-standard inode size used
 #define EXT2_FEATURE_COMPAT_RESIZE_INO		0x0010
-//Hash-indexed directories
+//Hash-indexed directories(HTree)
 #define EXT2_FEATURE_COMPAT_DIR_INDEX		0x0020
 #define EXT2_FEATURE_COMPAT_ANY			0xffffffff
 
 //Reduced superblock backups
 #define EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
-//Files larger than 2GiB in size
+//Large file support, 64-bit file size
 #define EXT2_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
+//Binary tree sorted directory files
 #define EXT2_FEATURE_RO_COMPAT_BTREE_DIR	0x0004
 #define EXT2_FEATURE_RO_COMPAT_ANY		0xffffffff
 
+//Disk/File compression is used
 #define EXT2_FEATURE_INCOMPAT_COMPRESSION	0x0001
 //File type in directory entries
 #define EXT2_FEATURE_INCOMPAT_FILETYPE		0x0002
 #define EXT3_FEATURE_INCOMPAT_RECOVER		0x0004
 #define EXT3_FEATURE_INCOMPAT_JOURNAL_DEV	0x0008
-//Reduced block group backups
+//将多个group组成metagroup
 #define EXT2_FEATURE_INCOMPAT_META_BG		0x0010
 #define EXT2_FEATURE_INCOMPAT_ANY		0xffffffff
 
+//kernel支持的兼容特性
 #define EXT2_FEATURE_COMPAT_SUPP	EXT2_FEATURE_COMPAT_EXT_ATTR
+/*
+ *不兼容特性，也就是说如果在s_feature_incompat出现了除此之外的bit， 
+ *kernel不兼容，既不能挂载fs
+*/
 #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE| \
 					 EXT2_FEATURE_INCOMPAT_META_BG)
+/*
+ *只读特性，也就是说如果在s_feature_ro_compat出现了除此之外的bit， 
+ *kernel只能以只读方式挂载fs
+*/
 #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
 					 EXT2_FEATURE_RO_COMPAT_BTREE_DIR)

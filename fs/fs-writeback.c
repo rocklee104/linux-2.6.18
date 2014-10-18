@@ -52,6 +52,7 @@ extern struct super_block *blockdev_superblock;
  * page->mapping->host, so the page-dirtying time is recorded in the internal
  * blockdev inode.
  */
+//在把inode标记为dirty之前，需要将inode放入hash表中
 void __mark_inode_dirty(struct inode *inode, int flags)
 {
 	struct super_block *sb = inode->i_sb;
@@ -73,6 +74,7 @@ void __mark_inode_dirty(struct inode *inode, int flags)
 
 	/* avoid the locking if we can */
 	if ((inode->i_state & flags) == flags)
+		//inode的状态已经包含flag
 		return;
 
 	if (unlikely(block_dump)) {
@@ -112,10 +114,13 @@ void __mark_inode_dirty(struct inode *inode, int flags)
 		 * dirty list.  Add blockdev inodes as well.
 		 */
 		if (!S_ISBLK(inode->i_mode)) {
+			//没有在hash表中
 			if (hlist_unhashed(&inode->i_hash))
 				goto out;
 		}
+		//inode在hash表中
 		if (inode->i_state & (I_FREEING|I_CLEAR))
+			//inode要被销毁
 			goto out;
 
 		/*

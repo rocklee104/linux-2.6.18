@@ -615,6 +615,7 @@ EXPORT_SYMBOL(write_one_page);
 int __set_page_dirty_nobuffers(struct page *page)
 {
 	if (!TestSetPageDirty(page)) {
+		//原先page clean
 		struct address_space *mapping = page_mapping(page);
 		struct address_space *mapping2;
 
@@ -626,12 +627,14 @@ int __set_page_dirty_nobuffers(struct page *page)
 				if (mapping_cap_account_dirty(mapping))
 					__inc_zone_page_state(page,
 								NR_FILE_DIRTY);
+				//step 1: 在address space中将page设置成dirty
 				radix_tree_tag_set(&mapping->page_tree,
 					page_index(page), PAGECACHE_TAG_DIRTY);
 			}
 			write_unlock_irq(&mapping->tree_lock);
 			if (mapping->host) {
 				/* !PageAnon && !swapper_space */
+				//step 2: 将inode设置成dirty
 				__mark_inode_dirty(mapping->host,
 							I_DIRTY_PAGES);
 			}
