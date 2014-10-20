@@ -548,12 +548,19 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
 #endif
 
 struct inode {
+    //用于将inode接入hash表中
 	struct hlist_node	i_hash;
-	//用于链接描述inode当前状态的链表,当创建一个新的inode的时候,
-	//成员i_list要链接到inode_in_use这个链表，表示inode处于使用状态
-	//当i_count为0时，就将inode加入inode_unused链表中
+    /*
+     *i_list用作连接一下3个链表中的一个： 
+     *1.inode_unused:inode未使用链表,inode是clean的,并且i_count为0,链表头是inode_unused
+     *2.inode_in_use:inode正在使用链表,inode是clean的,并且i_count>0,链表头是inode_in_use 
+     *3.dirty链表:dirty的inode链表，链表头是sb->s_dirty 
+     * 
+     *i_state的值等于I_DIRTY_SYNC，I_DIRTY_DATASYNC，I_DIRTY_PAGES其中一个， 
+     *就表示inode dirty
+    */
 	struct list_head	i_list;
-	//链表元素,链表头是super_block->s_inodes
+	//链表元素,用于记录整个fs的inode,链表头是super_block->s_inodes
 	struct list_head	i_sb_list;
 	//链表头,成员是struct dentry中的d_alias
 	struct list_head	i_dentry;
@@ -970,6 +977,7 @@ extern spinlock_t sb_lock;
 //只要s_active大于0,s_count就从S_BIAS开始计数
 #define S_BIAS (1<<30)
 struct super_block {
+    //链表成员，链表头是super_blocks,用于记录系统中所有的sb
 	struct list_head	s_list;		/* Keep this first */
 	//设备标识符
 	dev_t			s_dev;		/* search index; _not_ kdev_t */
@@ -1012,13 +1020,13 @@ struct super_block {
 	//指向super block扩展属性结构的指针
 	struct xattr_handler	**s_xattr;
 
-	//链表头, 成员是inode的i_sb_list
+	//链表头, 成员是inode的i_sb_list，用于记录整个fs的inode
 	struct list_head	s_inodes;	/* all inodes */
 	struct list_head	s_dirty;	/* dirty inodes */
 	struct list_head	s_io;		/* parked for writeback */
 	//用于处理远程网络文件系统的匿名目录项的链表
 	struct hlist_head	s_anon;		/* anonymous dentries for (nfs) exporting */
-	//成员是file->fu_list
+	//成员是file->fu_list, 链接正在使用的文件对象
 	struct list_head	s_files;
 
 	//指向块设备驱动程序描述符的指针
@@ -1338,11 +1346,12 @@ struct super_operations {
 #define I_FREEING		16
 //inode没有脏数据并且可以被销毁
 #define I_CLEAR			32
-//inode处于生成状态
+//inode处于生成状态,inode对象已经分配但是还没有用从磁盘读出来的数据填充
 #define I_NEW			64
 //inode将要被销毁
 #define I_WILL_FREE		128
 
+//i_state的值等于I_DIRTY_SYNC，I_DIRTY_DATASYNC，I_DIRTY_PAGES其中一个，就表示inode dirty
 #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
 
 extern void __mark_inode_dirty(struct inode *, int);

@@ -88,7 +88,7 @@ struct dentry {
 	//由d_lock保护
 	unsigned int d_flags;		/* protected by d_lock */
 	spinlock_t d_lock;		/* per dentry lock */
-	//文件名所属的inode
+	//文件名所属的inode,如果d_inode==NULL,这个dentry就是一个negtive的状态
 	struct inode *d_inode;		/* Where the name belongs to - NULL is
 					 * negative */
 	/*
@@ -115,7 +115,9 @@ struct dentry {
 	} d_u;
 	//链表头, 子目录的目录项链表的d_child都是此链表的成员
 	struct list_head d_subdirs;	/* our children */
-	//链表头是inode的i_dentry, 在存在硬链接时会有1个inode对应多个dentry的情况
+    /*
+     *链表头是inode的i_dentry, 在存在硬链接时会有1个inode对应多个dentry的情况. 
+    */
 	struct list_head d_alias;	/* inode alias list */
 	unsigned long d_time;		/* used by d_revalidate */
 	//操作由底层文件系统实现
