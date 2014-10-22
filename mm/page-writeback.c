@@ -69,16 +69,22 @@ int dirty_background_ratio = 10;
 /*
  * The generator of dirty data starts writeback at this percentage
  */
+/*
+ * 对应sysctl是dirty_ratio,指定了dirty page(相对于非高端内存域)的百分比,dirty
+ * page ratio超过该阀值,将开始刷出.
+*/
 int vm_dirty_ratio = 40;
 
 /*
  * The interval between `kupdate'-style writebacks, in jiffies
  */
+//周期性刷出例程两次调用之间的间隔
 int dirty_writeback_interval = 5 * HZ;
 
 /*
  * The longest number of jiffies for which data is allowed to remain dirty
  */
+//一页可以保持dirty的最长时间
 int dirty_expire_interval = 30 * HZ;
 
 /*
@@ -380,6 +386,7 @@ static DEFINE_TIMER(laptop_mode_wb_timer, laptop_timer_fn, 0, 0);
  * older_than_this takes precedence over nr_to_write.  So we'll only write back
  * all dirty pages if they are all attached to "old" mappings.
  */
+//周期性回写
 static void wb_kupdate(unsigned long arg)
 {
 	unsigned long oldest_jif;
@@ -417,7 +424,9 @@ static void wb_kupdate(unsigned long arg)
 		nr_to_write -= MAX_WRITEBACK_PAGES - wbc.nr_to_write;
 	}
 	if (time_before(next_jif, jiffies + HZ))
+        //工作在dirty_writeback_interval内完成不了,即next_jif < jiffies + HZ,1s后触发定时器
 		next_jif = jiffies + HZ;
+    //工作在dirty_writeback_interval内完成,刷新间隔不变
 	if (dirty_writeback_interval)
 		mod_timer(&wb_timer, next_jif);
 }
@@ -441,6 +450,7 @@ int dirty_writeback_centisecs_handler(ctl_table *table, int write,
 static void wb_timer_fn(unsigned long unused)
 {
 	if (pdflush_operation(wb_kupdate, 0) < 0)
+        //没有pdflush线程可用时,重置定时器
 		mod_timer(&wb_timer, jiffies + HZ); /* delay 1 second */
 }
 

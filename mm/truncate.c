@@ -268,6 +268,7 @@ unlock:
 
 unsigned long invalidate_inode_pages(struct address_space *mapping)
 {
+	//ÒÆ³ıËùÓĞµÄunlocked pages
 	return invalidate_mapping_pages(mapping, 0, ~0UL);
 }
 

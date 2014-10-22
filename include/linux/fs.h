@@ -632,7 +632,11 @@ struct inode {
 #endif
 	//inode的状态标志
 	unsigned long		i_state;
-	//inode的dirty事件, 以jiffies为单位
+	/*
+     *inode dirty的时间, 以jiffies为单位。如果在回写的控制参数中指定了 
+     *older_than_this条件,那么在标记为dirty的inode中，只有jiffies - dirty_when > 
+     *older_than_this的inode才会被刷入 
+    */  
 	unsigned long		dirtied_when;	/* jiffies of first dirtying */
 
 	//fs的安装标志
@@ -1022,6 +1026,7 @@ struct super_block {
 
 	//链表头, 成员是inode的i_sb_list，用于记录整个fs的inode
 	struct list_head	s_inodes;	/* all inodes */
+    //s_dirty上的inode是按时间排序的,越早dirty的inode,越靠近链表尾部
 	struct list_head	s_dirty;	/* dirty inodes */
 	struct list_head	s_io;		/* parked for writeback */
 	//用于处理远程网络文件系统的匿名目录项的链表
@@ -1342,13 +1347,13 @@ struct super_operations {
 #define __I_LOCK		3
 //inode被加锁
 #define I_LOCK			(1 << __I_LOCK)
-//inode将要被销毁，但是其中仍然有脏数据尚未同步
+//inode将要被销毁，但是其中仍然有脏数据尚未同步，调用inode_clear之前使用
 #define I_FREEING		16
-//inode没有脏数据并且可以被销毁
+//inode没有脏数据并且可以被销毁，inode_clear中使用
 #define I_CLEAR			32
 //inode处于生成状态,inode对象已经分配但是还没有用从磁盘读出来的数据填充
 #define I_NEW			64
-//inode将要被销毁
+//inode将要被销毁，调用generic_forget_inode写磁盘前置位
 #define I_WILL_FREE		128
 
 //i_state的值等于I_DIRTY_SYNC，I_DIRTY_DATASYNC，I_DIRTY_PAGES其中一个，就表示inode dirty

@@ -411,7 +411,13 @@ int __invalidate_device(struct block_device *bdev)
 	return res;
 }
 EXPORT_SYMBOL(__invalidate_device);
-
+/*
+ *inode能够移动到inode_unse的条件有：
+ *	1.i_state必须为0
+ *	2.i_count必须为0
+ *	3.inode没有与其关联的buffer
+ *	4.inode的地址空间中没有与其关联的page
+*/
 static int can_unuse(struct inode *inode)
 {
 	if (inode->i_state)
@@ -453,20 +459,28 @@ static void prune_icache(int nr_to_scan)
 		if (list_empty(&inode_unused))
 			break;
 
+		//从inode_unused链表结尾开始遍历
 		inode = list_entry(inode_unused.prev, struct inode, i_list);
 
 		if (inode->i_state || atomic_read(&inode->i_count)) {
+			/*
+			 *如果inode->i_state不为0,或者inode->i_count>0, 
+			 *就将这个inode移动到inode_unused的首部
+			*/
 			list_move(&inode->i_list, &inode_unused);
 			continue;
 		}
 		if (inode_has_buffers(inode) || inode->i_data.nrpages) {
+			//如果inode中关联的bh链表不为空，或者inode的address_space中关联的页面
 			__iget(inode);
 			spin_unlock(&inode_lock);
 			if (remove_inode_buffers(inode))
+				//与inode关联的所有bh全部移除后，就使与inode相关的pages无效
 				reap += invalidate_inode_pages(&inode->i_data);
 			iput(inode);
 			spin_lock(&inode_lock);
-
+			
+			//这里不太明白为什么要这样判断
 			if (inode != list_entry(inode_unused.next,
 						struct inode, i_list))
 				continue;	/* wrong inode or list_empty */
@@ -1068,8 +1082,9 @@ void generic_delete_inode(struct inode *inode)
 {
 	struct super_operations *op = inode->i_sb->s_op;
 
-	//与sb的链表解除关系
+	//从inode必定从属的状态链表(unused,in_use,dirty)中移除
 	list_del_init(&inode->i_list);
+	//从sb管理的inode链表中移除
 	list_del_init(&inode->i_sb_list);
 	inode->i_state|=I_FREEING;
 	inodes_stat.nr_inodes--;

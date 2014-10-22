@@ -1075,8 +1075,9 @@ void ext2_write_super (struct super_block * sb)
 		es = EXT2_SB(sb)->s_es;
 
 		if (le16_to_cpu(es->s_state) & EXT2_VALID_FS) {
+            //挂载时修改super block
 			ext2_debug ("setting valid to 0\n");
-            //清除EXT2_VALID_FS标志
+            //挂载到系统时,需要清除EXT2_VALID_FS标志,只有卸载后需要置位
 			es->s_state = cpu_to_le16(le16_to_cpu(es->s_state) &
 						  ~EXT2_VALID_FS);
 			es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
@@ -1085,6 +1086,7 @@ void ext2_write_super (struct super_block * sb)
 			es->s_mtime = cpu_to_le32(get_seconds());
 			ext2_sync_super(sb, es);
 		} else
+            //非挂载时修改super block
 			ext2_commit_super (sb, es);
 	}
 	sb->s_dirt = 0;

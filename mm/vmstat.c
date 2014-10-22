@@ -110,6 +110,7 @@ void vm_events_fold_cpu(int cpu)
  *
  * vm_stat contains the global counters
  */
+//vm_stat中保存了每种状态的page的个数
 atomic_long_t vm_stat[NR_VM_ZONE_STAT_ITEMS];
 EXPORT_SYMBOL(vm_stat);
 

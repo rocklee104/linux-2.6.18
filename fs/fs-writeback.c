@@ -315,18 +315,28 @@ sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 	const unsigned long start = jiffies;	/* livelock avoidance */
 
 	if (!wbc->for_kupdate || list_empty(&sb->s_io))
+        //不是周期性的回写或者s_io是空,就将s_dirty中的元素移动到s_io中,重新初始化s_dirty
 		list_splice_init(&sb->s_dirty, &sb->s_io);
 
 	while (!list_empty(&sb->s_io)) {
 		struct inode *inode = list_entry(sb->s_io.prev,
 						struct inode, i_list);
+        //从最早dirty的inode开始遍历
 		struct address_space *mapping = inode->i_mapping;
 		struct backing_dev_info *bdi = mapping->backing_dev_info;
 		long pages_skipped;
 
 		if (!bdi_cap_writeback_dirty(bdi)) {
+            //如果设备不能writeback
+            /*
+             *纯粹基于内存的文件系统如ramdisk,或者伪文件系统(bdev除外)或者纯粹的虚拟文件系统 
+             *都不需要与底层块设备同步,这些文件系统会在backing_dev_info中设置 
+             *BDI_CAP_NO_WRITEBACK 
+            */
+            //将inode从原先的链表中取出来,加入s_dirty
 			list_move(&inode->i_list, &sb->s_dirty);
 			if (sb == blockdev_superblock) {
+                //bdev文件系统,跳过
 				/*
 				 * Dirty memory-backed blockdev: the ramdisk
 				 * driver does this.  Skip just this inode

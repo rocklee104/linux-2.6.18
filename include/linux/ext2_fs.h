@@ -296,7 +296,9 @@ struct ext2_inode {
 /*
  * File system states
  */
+//卸载干净之后,这个bit为1.挂载上并且没有卸载,这个bit为0
 #define	EXT2_VALID_FS			0x0001	/* Unmounted cleanly */
+//need fsck
 #define	EXT2_ERROR_FS			0x0002	/* Errors detected */
 
 /*

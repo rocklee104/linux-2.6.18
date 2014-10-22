@@ -997,11 +997,13 @@ int remove_inode_buffers(struct inode *inode)
 
 		spin_lock(&buffer_mapping->private_lock);
 		while (!list_empty(list)) {
+            //获取inode关联的第一个bh
 			struct buffer_head *bh = BH_ENTRY(list->next);
 			if (buffer_dirty(bh)) {
 				ret = 0;
 				break;
 			}
+            //将bh从list中移除
 			__remove_assoc_queue(bh);
 		}
 		spin_unlock(&buffer_mapping->private_lock);

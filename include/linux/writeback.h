@@ -37,6 +37,7 @@ enum writeback_sync_modes {
  * always on the stack, and hence need no locking.  They are always initialised
  * in a manner such that unspecified fields are set to zero.
  */
+//保存了控制dirty page的各种参数
 struct writeback_control {
 	struct backing_dev_info *bdi;	/* If !NULL, only write back this
 					   queue */
@@ -55,11 +56,20 @@ struct writeback_control {
 	loff_t range_start;
 	loff_t range_end;
 
+    //指定了回写队列在遇到拥塞时是否阻塞
 	unsigned nonblocking:1;		/* Don't get stuck on request queues */
+    //通知高层在数据回写期间发生了拥塞
 	unsigned encountered_congestion:1; /* An output: a queue is full */
+    //如果写请求由周期性机制发出,设置为1,否则为0
 	unsigned for_kupdate:1;		/* A kupdate writeback */
+    //回写操作是由内存回收发起,设置为1,否则为0
 	unsigned for_reclaim:1;		/* Invoked from the page allocator */
+    //回写操作是由do_writepages发起,设置为1,否则为0
 	unsigned for_writepages:1;	/* This is a writepages() call */
+    /*
+     * 如果range_cyclic设置为0,则回写机制限制于对range_start和range_end指定的范围进行操作.
+     * 该限制是对回写操作的目标映射设置的.如果设置为1,则内核可能多次遍历与映射相关的页该成员因此得名
+    */
 	unsigned range_cyclic:1;	/* range_start is cyclic */
 };
 

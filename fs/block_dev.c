@@ -314,7 +314,7 @@ static struct file_system_type bd_type = {
 	.kill_sb	= kill_anon_super,
 };
 
-//伪文件系统bdeb的vfsmount指针
+//伪文件系统bdev的vfsmount指针
 static struct vfsmount *bd_mnt __read_mostly;
 struct super_block *blockdev_superblock;
 

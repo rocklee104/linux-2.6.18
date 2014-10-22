@@ -48,12 +48,15 @@ struct zone_padding {
 
 enum zone_stat_item {
 	NR_ANON_PAGES,	/* Mapped anonymous pages */
+    //被页表机制映射的页的数目(只计算基于文件的页,直接的内核映射不包含在内)
 	NR_FILE_MAPPED,	/* pagecache pages mapped into pagetables.
 			   only modified from process context */
 	NR_FILE_PAGES,
 	NR_SLAB,	/* Pages used by slab allocator */
+    //用于存放页表的页的个数
 	NR_PAGETABLE,	/* used for pagetables */
 	NR_FILE_DIRTY,
+    //正在回写的页的个数
 	NR_WRITEBACK,
 	NR_UNSTABLE_NFS,	/* NFS unstable pages */
 	NR_BOUNCE,

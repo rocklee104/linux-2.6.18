@@ -338,6 +338,7 @@ static inline void list_splice(struct list_head *list, struct list_head *head)
  *
  * The list at @list is reinitialised
  */
+//将list->next到list->pre头插入head链表中,重新初始化list
 static inline void list_splice_init(struct list_head *list,
 				    struct list_head *head)
 {
