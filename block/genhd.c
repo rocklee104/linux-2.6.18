@@ -69,6 +69,7 @@ int register_blkdev(unsigned int major, const char *name)
 		}
 
 		if (index == 0) {
+			//如果循环完成后还没在major_names找到合适的位置
 			printk("register_blkdev: failed to get major for %s\n",
 			       name);
 			ret = -EBUSY;
@@ -87,7 +88,7 @@ int register_blkdev(unsigned int major, const char *name)
 	p->major = major;
 	strlcpy(p->name, name, sizeof(p->name));
 	p->next = NULL;
-    //在手动指定major的情况下,major可能超过255
+    //在手动指定major的情况下,major可能超过255,如果超过255,就使用%255后的下标
 	index = major_to_index(major);
 
 	for (n = &major_names[index]; *n; n = &(*n)->next) {
@@ -125,7 +126,9 @@ int unregister_blkdev(unsigned int major, const char *name)
 	for (n = &major_names[index]; *n; n = &(*n)->next)
 		if ((*n)->major == major)
 			break;
+	//判断是什么原因结束循环的
 	if (!*n || strcmp((*n)->name, name))
+		//错误退出循环
 		ret = -EINVAL;
 	else {
 		p = *n;
@@ -641,6 +644,7 @@ struct gendisk *alloc_disk_node(int minors, int node_id)
 			memset(disk->part, 0, size);
 		}
 		
+		//如果minors <= 1就说明目前分区只有主分区
 		disk->minors = minors;
 		//加入block_subsys,将disk的kobj.kset指向block_subsys的kset
 		kobj_set_kset_s(disk,block_subsys);

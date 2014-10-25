@@ -25,8 +25,11 @@
  * Access to this subsystem has to be serialized externally. (this is
  * true for the boot process anyway)
  */
+//低端内存最大页框号
 unsigned long max_low_pfn;
+//表示系统可用的最小的页框号
 unsigned long min_low_pfn;
+//物理内存最大地址对应的页框号
 unsigned long max_pfn;
 
 EXPORT_UNUSED_SYMBOL(max_pfn);  /*  June 2006  */

@@ -370,6 +370,7 @@ struct request_queue
 	//刷新请求队列时调用的方法
 	issue_flush_fn		*issue_flush_fn;
 	prepare_flush_fn	*prepare_flush_fn;
+    //软中断执行函数,由具体driver指定
 	softirq_done_fn		*softirq_done_fn;
 
 	/*

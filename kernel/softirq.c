@@ -38,10 +38,12 @@
  */
 
 #ifndef __ARCH_IRQ_STAT
+//每个cpu都有一个软中断状态表,状态表在不同cpu之间不能共享
 irq_cpustat_t irq_stat[NR_CPUS] ____cacheline_aligned;
 EXPORT_SYMBOL(irq_stat);
 #endif
 
+//全局的软中断向量表
 static struct softirq_action softirq_vec[32] __cacheline_aligned_in_smp;
 
 static DEFINE_PER_CPU(struct task_struct *, ksoftirqd);
@@ -309,11 +311,13 @@ inline fastcall void raise_softirq_irqoff(unsigned int nr)
 	 * schedule the softirq soon.
 	 */
 	if (!in_interrupt())
+		//如果当前进程不在中断/软中断,就唤醒软中断守护进程
 		wakeup_softirqd();
 }
 
 EXPORT_SYMBOL(raise_softirq_irqoff);
 
+//触发一个软中断
 void fastcall raise_softirq(unsigned int nr)
 {
 	unsigned long flags;

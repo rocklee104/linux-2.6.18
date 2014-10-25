@@ -197,6 +197,7 @@ static inline void list_del_rcu(struct list_head *entry)
  * @new : the new element to insert
  * Note: if 'old' was empty, it will be overwritten.
  */
+//在old所在的链表中，将old替换成new
 static inline void list_replace(struct list_head *old,
 				struct list_head *new)
 {

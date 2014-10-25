@@ -70,6 +70,10 @@ unsigned long blk_max_low_pfn, blk_max_pfn;
 EXPORT_SYMBOL(blk_max_low_pfn);
 EXPORT_SYMBOL(blk_max_pfn);
 
+/*
+ * 链表头,链表成员是request->donelist.在request执行完成后会将request挂到blk_cpu_done上,
+ * 然后触发软中断,软中断将request取下来,执行driver的软中断处理函数
+*/
 static DEFINE_PER_CPU(struct list_head, blk_cpu_done);
 
 /* Amount of time in which a process may batch requests */
@@ -101,11 +105,13 @@ static void blk_queue_congestion_threshold(struct request_queue *q)
 	int nr;
 
 	nr = q->nr_requests - (q->nr_requests / 8) + 1;
+	//请求大于等于队列中允许最大的请求数目的7/8就认为队列是拥塞的
 	if (nr > q->nr_requests)
 		nr = q->nr_requests;
 	q->nr_congestion_on = nr;
 
 	nr = q->nr_requests - (q->nr_requests / 8) - (q->nr_requests / 16) - 1;
+	//请求小于等于队列中允许最大的请求数目的13/16,认为队列不拥塞
 	if (nr < 1)
 		nr = 1;
 	q->nr_congestion_off = nr;
@@ -244,8 +250,11 @@ void blk_queue_make_request(request_queue_t * q, make_request_fn * mfn)
 	/*
 	 * set defaults
 	 */
+	//请求队列中最大请求个数为128
 	q->nr_requests = BLKDEV_MAX_RQ;
+	//设置单个请求所能处理的最大物理段数
 	blk_queue_max_phys_segments(q, MAX_PHYS_SEGMENTS);
+	//设置单个请求所能处理的最大硬段数(分散-聚集DMA操作中的最大不同内存区数)
 	blk_queue_max_hw_segments(q, MAX_HW_SEGMENTS);
 	q->make_request_fn = mfn;
 	q->backing_dev_info.ra_pages = (VM_MAX_READAHEAD * 1024) / PAGE_CACHE_SIZE;
@@ -262,6 +271,7 @@ void blk_queue_make_request(request_queue_t * q, make_request_fn * mfn)
 	if (q->unplug_delay == 0)
 		q->unplug_delay = 1;
 
+	//初始化工作队列的工作成员
 	INIT_WORK(&q->unplug_work, blk_unplug_work, q);
 
 	q->unplug_timer.function = blk_unplug_timeout;
@@ -663,16 +673,28 @@ EXPORT_SYMBOL(blk_queue_bounce_limit);
  *    Enables a low level driver to set an upper limit on the size of
  *    received requests.
  **/
+//设置一个请求支持最大的sector
 void blk_queue_max_sectors(request_queue_t *q, unsigned int max_sectors)
 {
+	//一个max_sector 512 byte
 	if ((max_sectors << 9) < PAGE_CACHE_SIZE) {
+		/*
+		 *如果512*max_sector < 4k,说明max_sector没有到上限, 
+		 *将max_sector设置到最大 
+		*/
 		max_sectors = 1 << (PAGE_CACHE_SHIFT - 9);
 		printk("%s: set to minimum %d\n", __FUNCTION__, max_sectors);
 	}
 
+	//到这里,说明max_sector到上限并且可能已经超过上限
 	if (BLK_DEF_MAX_SECTORS > max_sectors)
+		//max_sectors小于系统限制,q->max_hw_sectors和q->max_sectors使用max_sectors
 		q->max_hw_sectors = q->max_sectors = max_sectors;
  	else {
+		/*
+		 *max_sectors大于等于系统限制,q->max_sectors使用系统限制值. 
+		 *q->max_hw_sectors使用max_sectors,说明硬件支持到max_sectors 
+		*/
 		q->max_sectors = BLK_DEF_MAX_SECTORS;
 		q->max_hw_sectors = max_sectors;
 	}
@@ -690,6 +712,7 @@ EXPORT_SYMBOL(blk_queue_max_sectors);
  *    physical data segments in a request.  This would be the largest sized
  *    scatter list the driver could handle.
  **/
+//设置本队列中请求的最大物理段
 void blk_queue_max_phys_segments(request_queue_t *q, unsigned short max_segments)
 {
 	if (!max_segments) {
@@ -1641,6 +1664,7 @@ static void blk_unplug_work(void *data)
 	q->unplug_fn(q);
 }
 
+//unplug超时函数,当超时后,将unplug_work提交到块设备的工作队列上
 static void blk_unplug_timeout(unsigned long data)
 {
 	request_queue_t *q = (request_queue_t *)data;
@@ -3374,7 +3398,9 @@ static void blk_done_softirq(struct softirq_action *h)
 	while (!list_empty(&local_list)) {
 		struct request *rq = list_entry(local_list.next, struct request, donelist);
 
+		//取下blk_cpu_done中的成员
 		list_del_init(&rq->donelist);
+		//执行具体driver绑定的中断完成处理函数
 		rq->q->softirq_done_fn(rq);
 	}
 }
@@ -3430,6 +3456,7 @@ void blk_complete_request(struct request *req)
 	local_irq_save(flags);
 
 	cpu_list = &__get_cpu_var(blk_cpu_done);
+	//request完成,将request挂到blk_cpu_done上
 	list_add_tail(&req->donelist, cpu_list);
 	raise_softirq_irqoff(BLOCK_SOFTIRQ);
 
@@ -3506,6 +3533,7 @@ void blk_rq_bio_prep(request_queue_t *q, struct request *rq, struct bio *bio)
 
 EXPORT_SYMBOL(blk_rq_bio_prep);
 
+//将work提交到工作队列kblockd_workqueue上去
 int kblockd_schedule_work(struct work_struct *work)
 {
 	return queue_work(kblockd_workqueue, work);
@@ -3539,6 +3567,7 @@ int __init blk_dev_init(void)
 	for_each_possible_cpu(i)
 		INIT_LIST_HEAD(&per_cpu(blk_cpu_done, i));
 
+	//注册一个block device软中断
 	open_softirq(BLOCK_SOFTIRQ, blk_done_softirq, NULL);
 	register_hotcpu_notifier(&blk_cpu_notifier);
 
@@ -3914,7 +3943,7 @@ int blk_register_queue(struct gendisk *disk)
 		return -ENXIO;
 
 	q->kobj.parent = kobject_get(&disk->kobj);
-
+	
 	ret = kobject_add(&q->kobj);
 	if (ret < 0)
 		return ret;

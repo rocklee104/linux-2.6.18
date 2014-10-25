@@ -309,6 +309,7 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
  * on the writer throttling path, and we get decent balancing between many
  * throttled threads: we don't want them all piling up on __wait_on_inode.
  */
+//inode从sb->io移动到sb->dirty上
 static void
 sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 {
@@ -348,17 +349,20 @@ sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 			 * than the kernel-internal bdev filesystem.  Skip the
 			 * entire superblock.
 			 */
+            //对于文件系统而不是内核内部的bdev伪文件系统的dirty inode,跳过全部的superblock
 			break;
 		}
 
 		if (wbc->nonblocking && bdi_write_congested(bdi)) {
+            //wbc中设置了回写队列在遇到拥塞时是不阻塞,并且bdi在回写过程中遇到了拥塞
 			wbc->encountered_congestion = 1;
 			if (sb != blockdev_superblock)
 				break;		/* Skip a congested fs */
 			list_move(&inode->i_list, &sb->s_dirty);
 			continue;		/* Skip a congested blockdev */
 		}
-
+        
+        //要操作的块设备不是这个设备
 		if (wbc->bdi && bdi != wbc->bdi) {
 			if (sb != blockdev_superblock)
 				break;		/* fs has the wrong queue */
@@ -367,15 +371,18 @@ sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 		}
 
 		/* Was this inode dirtied after sync_sb_inodes was called? */
+        //如果是sync_sb_inode执行后,结点变为了脏结点,就略过个结点
 		if (time_after(inode->dirtied_when, start))
 			break;
 
 		/* Was this inode dirtied too recently? */
+        //忽略比指定时间戳小的结点
 		if (wbc->older_than_this && time_after(inode->dirtied_when,
 						*wbc->older_than_this))
 			break;
 
 		/* Is another pdflush already flushing this queue? */
+        //已经有另外的pdflush在处理这个super_block中的结点了
 		if (current_is_pdflush() && !writeback_acquire(bdi))
 			break;
 
@@ -387,6 +394,7 @@ sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 			inode->dirtied_when = jiffies;
 			list_move(&inode->i_list, &sb->s_dirty);
 		}
+        //处理完了,清除设备的BDI_pdflush 标志
 		if (current_is_pdflush())
 			writeback_release(bdi);
 		if (wbc->pages_skipped != pages_skipped) {
@@ -398,6 +406,7 @@ sync_sb_inodes(struct super_block *sb, struct writeback_control *wbc)
 		}
 		spin_unlock(&inode_lock);
 		iput(inode);
+        //如果有抢占的情况,就将当前进程让出来
 		cond_resched();
 		spin_lock(&inode_lock);
 		if (wbc->nr_to_write <= 0)

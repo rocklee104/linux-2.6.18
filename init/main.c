@@ -512,6 +512,7 @@ asmlinkage void __init start_kernel(void)
 	pidhash_init();
 	init_timers();
 	hrtimers_init();
+    //»Ì÷–∂œ≥ı ºªØ
 	softirq_init();
 	timekeeping_init();
 	time_init();

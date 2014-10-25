@@ -421,15 +421,16 @@ static int __init rd_init(void)
 	int i;
 	int err = -ENOMEM;
 
-	//block size必须>=512 并且 < PAGE_SIZE
 	if (rd_blocksize > PAGE_SIZE || rd_blocksize < 512 ||
 			(rd_blocksize & (rd_blocksize-1))) {
+		//block size必须>=512 并且 < PAGE_SIZE,并且要是2的n次幂
 		printk("RAMDISK: wrong blocksize %d, reverting to defaults\n",
 		       rd_blocksize);
 		rd_blocksize = BLOCK_SIZE;
 	}
 
 	for (i = 0; i < CONFIG_BLK_DEV_RAM_COUNT; i++) {
+		//分配8个磁盘,在/sys/block下生成目录,只支持一个分区
 		rd_disks[i] = alloc_disk(1);
 		if (!rd_disks[i])
 			goto out;
@@ -440,6 +441,7 @@ static int __init rd_init(void)
 		goto out;
 	}
 
+	//给disk分配请求队列
 	for (i = 0; i < CONFIG_BLK_DEV_RAM_COUNT; i++) {
 		struct gendisk *disk = rd_disks[i];
 
@@ -456,9 +458,11 @@ static int __init rd_init(void)
 		disk->fops = &rd_bd_op;
 		disk->queue = rd_queue[i];
 		disk->flags |= GENHD_FL_SUPPRESS_PARTITION_INFO;
+		//设置磁盘名称
 		sprintf(disk->disk_name, "ram%d", i);
+		//设置磁盘容量
 		set_capacity(disk, rd_size * 2);
-		add_disk(rd_disks[i]);
+		add_disk(rd_disks[i]);  
 	}
 
 	/* rd_size is given in kB */

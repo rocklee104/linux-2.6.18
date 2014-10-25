@@ -86,9 +86,11 @@ struct hd_struct {
 	int policy, partno;
 };
 
+//如软盘或光盘这样可移动的磁盘
 #define GENHD_FL_REMOVABLE			1
 #define GENHD_FL_DRIVERFS			2
 #define GENHD_FL_CD				8
+//磁盘将被初始化并可以使用
 #define GENHD_FL_UP				16
 #define GENHD_FL_SUPPRESS_PARTITION_INFO	32
 
