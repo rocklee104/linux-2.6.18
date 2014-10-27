@@ -458,10 +458,13 @@ void kset_init(struct kset * k)
 
 int kset_add(struct kset * k)
 {
-    //当kset->kobj没有父节点及没有kset,并且kset有subsys,k->kobj的父节点就为k->subsys->kset.kobj
-	//在kobject_add中,如果kobject有parent,就使用其parent, 如果没有就用kset->kobject作为其parent
-	//所以在当前情况下要判断此kobject是否有subsys
-	if (!k->kobj.parent && !k->kobj.kset && k->subsys)
+    /*
+     *当kset->kobj没有父节点及没有kset,并且kset有subsys,k->kobj的父节点就为k->subsys->kset.kobj
+     *在kobject_add中,如果kobject有parent,就使用其parent,如果没有就用kset->kobject作为其parent
+     *所以在当前情况下要判断此kobject是否有subsys 
+    */ 
+    //genhd_device_init调用次函数时k->kobj.parent,k->kobj.kset,k->subsys均为NULL
+    if (!k->kobj.parent && !k->kobj.kset && k->subsys) 
 		k->kobj.parent = &k->subsys->kset.kobj;
 
 	return kobject_add(&k->kobj);

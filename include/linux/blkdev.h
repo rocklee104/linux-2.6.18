@@ -447,7 +447,7 @@ struct request_queue
 	unsigned int		max_sectors;
     //单个请求能处理的最大扇区数(硬件约束)
 	unsigned int		max_hw_sectors;
-	//单个请求所能处理的最大物理段数
+	//单个请求所能处理的最大物理段数,当次request bio_vec的总数
     unsigned short		max_phys_segments;
     //单个请求所能处理的最大硬段数(分散-聚集DMA操作中的最大不同内存区数)
 	unsigned short		max_hw_segments;

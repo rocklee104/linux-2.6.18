@@ -418,6 +418,7 @@ void register_disk(struct gendisk *disk)
 	s = strchr(disk->kobj.name, '/');
 	if (s)
 		*s = '!';
+    //在/sys/block下生成目录disk->disk_name
 	if ((err = kobject_add(&disk->kobj)))
 		return;
     //在/sys/block/disk->disk_name/下创建符号连接subsystem， 指向/sys/block

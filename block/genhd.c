@@ -53,6 +53,7 @@ void blkdev_show(struct seq_file *f, off_t offset)
 
 //获取一个设备号,其功能和字符设备register_chrdev_region一致
 //注册完成后通过/proc/devices能够看到这个块设备驱动
+//返回块设备的主设备号
 int register_blkdev(unsigned int major, const char *name)
 {
 	struct blk_major_name **n, *p;

@@ -256,6 +256,7 @@ void blk_queue_make_request(request_queue_t * q, make_request_fn * mfn)
 	blk_queue_max_phys_segments(q, MAX_PHYS_SEGMENTS);
 	//设置单个请求所能处理的最大硬段数(分散-聚集DMA操作中的最大不同内存区数)
 	blk_queue_max_hw_segments(q, MAX_HW_SEGMENTS);
+	//make_request_fn在submit_bio中会用到
 	q->make_request_fn = mfn;
 	q->backing_dev_info.ra_pages = (VM_MAX_READAHEAD * 1024) / PAGE_CACHE_SIZE;
 	q->backing_dev_info.state = 0;
@@ -263,6 +264,7 @@ void blk_queue_make_request(request_queue_t * q, make_request_fn * mfn)
 	blk_queue_max_sectors(q, SAFE_MAX_SECTORS);
 	blk_queue_hardsect_size(q, 512);
 	blk_queue_dma_alignment(q, 511);
+	//设置拥塞界限
 	blk_queue_congestion_threshold(q);
 	q->nr_batching = BLK_BATCH_REQ;
 
@@ -680,13 +682,13 @@ void blk_queue_max_sectors(request_queue_t *q, unsigned int max_sectors)
 	if ((max_sectors << 9) < PAGE_CACHE_SIZE) {
 		/*
 		 *如果512*max_sector < 4k,说明max_sector没有到上限, 
-		 *将max_sector设置到最大 
+		 *将max_sector设置到一页可以容纳的最大个数
 		*/
 		max_sectors = 1 << (PAGE_CACHE_SHIFT - 9);
 		printk("%s: set to minimum %d\n", __FUNCTION__, max_sectors);
 	}
 
-	//到这里,说明max_sector到上限并且可能已经超过上限
+	//到这里,说明max_sector已经到了或者超过一页可以容纳的最大个数,但是没有超过系统上限
 	if (BLK_DEF_MAX_SECTORS > max_sectors)
 		//max_sectors小于系统限制,q->max_hw_sectors和q->max_sectors使用max_sectors
 		q->max_hw_sectors = q->max_sectors = max_sectors;
@@ -3938,13 +3940,13 @@ int blk_register_queue(struct gendisk *disk)
 	int ret;
 
 	request_queue_t *q = disk->queue;
-
-	if (!q || !q->request_fn)
+	
+    if (!q || !q->request_fn) 
 		return -ENXIO;
 
 	q->kobj.parent = kobject_get(&disk->kobj);
 	
-	ret = kobject_add(&q->kobj);
+    ret = kobject_add(&q->kobj); 
 	if (ret < 0)
 		return ret;
 
