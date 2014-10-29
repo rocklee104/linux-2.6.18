@@ -1,6 +1,7 @@
 #ifndef _LINUX_LIMITS_H
 #define _LINUX_LIMITS_H
 
+//一个进程可以打开的最大文件数
 #define NR_OPEN	        1024
 
 #define NGROUPS_MAX    65536	/* supplemental group IDs are available */

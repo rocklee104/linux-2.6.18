@@ -29,12 +29,16 @@ typedef struct __wait_queue wait_queue_t;
 typedef int (*wait_queue_func_t)(wait_queue_t *wait, unsigned mode, int sync, void *key);
 int default_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key);
 
+//等待队列成员
 struct __wait_queue {
+    //flag的标志为0或者WQ_FLAG_EXCLUSIVE,当前没有其他标志
 	unsigned int flags;
-//表示节点对应进程对临界资源使用具有排他性。在唤醒是会唤醒所有非排他性进程和一定数量的排他性进程。
+//表示等待进程想要被独占地唤醒
 #define WQ_FLAG_EXCLUSIVE	0x01
 	void *private;
+    //调用func,唤醒等待进程
 	wait_queue_func_t func;
+    //用于将成员放置到等待队列中
 	struct list_head task_list;
 };
 
@@ -48,8 +52,10 @@ struct wait_bit_queue {
 	wait_queue_t wait;
 };
 
+//等待队列头
 struct __wait_queue_head {
 	spinlock_t lock;
+    //链表头,用于组织等待的成员
 	struct list_head task_list;
 };
 typedef struct __wait_queue_head wait_queue_head_t;

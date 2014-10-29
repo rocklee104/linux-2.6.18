@@ -309,6 +309,7 @@ void __init files_init(unsigned long mempages)
 	n = (mempages * (PAGE_SIZE / 1024)) / 10;
 	files_stat.max_files = n; 
 	if (files_stat.max_files < NR_FILE)
+		//系统能同时打开的最大文件个数的下限是NR_FILE
 		files_stat.max_files = NR_FILE;
 	files_defer_init();
 	percpu_counter_init(&nr_files, 0);

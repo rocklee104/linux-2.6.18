@@ -53,6 +53,7 @@ extern int leases_enable, lease_break_time;
 extern int dir_notify_enable;
 #endif
 
+//系统在某一给定时刻，限制的文件总数
 #define NR_FILE  8192	/* this can well be larger on a larger system */
 
 //access mode
