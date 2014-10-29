@@ -33,8 +33,9 @@ int default_wake_function(wait_queue_t *wait, unsigned mode, int sync, void *key
 struct __wait_queue {
     //flag的标志为0或者WQ_FLAG_EXCLUSIVE,当前没有其他标志
 	unsigned int flags;
-//表示等待进程想要被独占地唤醒
+//表示等待进程想要被独占地唤醒,独占等待队列位于链表尾部
 #define WQ_FLAG_EXCLUSIVE	0x01
+    //一般指向等待进程的task_struct对象
 	void *private;
     //调用func,唤醒等待进程
 	wait_queue_func_t func;
@@ -43,7 +44,9 @@ struct __wait_queue {
 };
 
 struct wait_bit_key {
+	//等待flag的地址
 	void *flags;
+	//等待flag中被置位的bit
 	int bit_nr;
 };
 
@@ -430,6 +433,7 @@ static inline int wait_on_bit(void *word, int bit,
 	//word中的bit位是否被置位,没被置位就return 0
 	if (!test_bit(bit, word))
 		return 0;
+	//word中的bit位被置位
 	return out_of_line_wait_on_bit(word, bit, action, mode);
 }
 

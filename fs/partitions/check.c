@@ -434,6 +434,7 @@ void register_disk(struct gendisk *disk)
 	if (!get_capacity(disk))
 		goto exit;
 
+    //这个bdev和inode关联了
 	bdev = bdget_disk(disk, 0);
 	if (!bdev)
 		goto exit;

@@ -23,6 +23,7 @@ void fastcall add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	unsigned long flags;
 
+	//清除WQ_FLAG_EXCLUSIVE标志,进程会被非独占唤醒
 	wait->flags &= ~WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&q->lock, flags);
 	__add_wait_queue(q, wait);
@@ -73,12 +74,14 @@ prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
 	wait->flags &= ~WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&q->lock, flags);
 	if (list_empty(&wait->task_list))
+        //加入等待队列
 		__add_wait_queue(q, wait);
 	/*
 	 * don't alter the task state if this is just going to
 	 * queue an async wait queue callback
 	 */
 	if (is_sync_wait(wait))
+        //设置进程状态
 		set_current_state(state);
 	spin_unlock_irqrestore(&q->lock, flags);
 }
@@ -167,11 +170,21 @@ __wait_on_bit(wait_queue_head_t *wq, struct wait_bit_queue *q,
 	int ret = 0;
 
 	do {
+        //将q->wait加入等待队列
 		prepare_to_wait(wq, &q->wait, mode);
 		if (test_bit(q->key.bit_nr, q->key.flags))
+            /*
+             * 如果等待被清除的bit仍然被置位,就执行action,对于wait_on_inode来说,
+             * 这个action就是schedule,也就是说如果bit_nr位没有被清除,就一直等待.
+            */
 			ret = (*action)(q->key.flags);
-		//当bit_nr没有被清除时,就一直循环
+        /*
+         * 当bit_nr没有被清除时,就一直循环,这实际上是在多个进程等待的时候使用的,
+         * 当条件成立时等待队列上的所有进程都被唤醒(thundering herd),
+         * 但只能有一个进程获取到数据,其他的进程继续休眠
+        */
 	} while (test_bit(q->key.bit_nr, q->key.flags) && !ret);
+    //移除等待队列
 	finish_wait(wq, &q->wait);
 	return ret;
 }
@@ -180,6 +193,7 @@ EXPORT_SYMBOL(__wait_on_bit);
 int __sched fastcall out_of_line_wait_on_bit(void *word, int bit,
 					int (*action)(void *), unsigned mode)
 {
+    //在zone中获取等待队列头
 	wait_queue_head_t *wq = bit_waitqueue(word, bit);
 	DEFINE_WAIT_BIT(wait, word, bit);
 

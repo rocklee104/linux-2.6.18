@@ -3530,6 +3530,8 @@ static void __wake_up_common(wait_queue_head_t *q, unsigned int mode,
 		wait_queue_t *curr = list_entry(tmp, wait_queue_t, task_list);
 		unsigned flags = curr->flags;
 
+		//唤醒所有非独占的等待队列
+		//对于独占的等待队列,执行nr_exclusive个独占的等待队列及全部的非独占等待队列
 		if (curr->func(curr, mode, sync, key) &&
 				(flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive)
 			break;

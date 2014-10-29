@@ -160,6 +160,10 @@ static struct inode *alloc_inode(struct super_block *sb)
 		 * inodes then use that.  Otherwise the inode share the bdev's
 		 * backing_dev_info.
 		 */
+        /*
+         * 如果block_device给inode提供了一个backing_dev_info,那就用这个backing_dev_info,
+         * 否则这个使用bdev的backing_dev_info。
+        */
 		if (sb->s_bdev) {
 			struct backing_dev_info *bdi;
 
