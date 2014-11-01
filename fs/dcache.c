@@ -63,10 +63,8 @@ static unsigned int d_hash_shift __read_mostly;
 //记录内存中活动的dentry
 static struct hlist_head *dentry_hashtable __read_mostly;
 /*
- *d_count == 0的dentry实例都放在dentry_unused中, 
- *它们被再次访问的可能性很大,不能将它们立即丢弃.
- *每一个处于unused状态下的dentry通过其d_lru指针域链入系统全局的LRU链表, 
- *表头由dentry_unused指针来定义 
+ *dcache中所有处于“unused”状态和“negative”状态的dentry对象都通过其d_lru指针域
+ *链入dentry_unused链表中,它们被再次访问的可能性很大,不能将它们立即丢弃.  
 */
 static LIST_HEAD(dentry_unused);
 

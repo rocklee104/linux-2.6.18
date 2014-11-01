@@ -111,6 +111,7 @@ static struct inode *alloc_inode(struct super_block *sb)
 	struct inode *inode;
 
 	if (sb->s_op->alloc_inode)
+		//对于bdev伪文件系统来说,将会调用bdev_alloc_inode分配一个struct bdev_inode类型的对象
 		inode = sb->s_op->alloc_inode(sb);
 	else
 		inode = (struct inode *) kmem_cache_alloc(inode_cachep, SLAB_KERNEL);
@@ -651,8 +652,12 @@ static struct inode * get_new_inode(struct super_block *sb, struct hlist_head *h
 		//根据sb和data在高速缓存中找到inode 
 		old = find_inode(sb, head, test, data);
 		if (!old) {
-			//在缓存中没找到inode, 才使用刚才分配的inode 
 			if (set(inode, data))
+				/*
+				 * 在缓存中没找到inode, 才使用刚才分配的inode 
+				 * 搜索时匹配的条件是 BDEV_I(inode)->bdev.bd_dev == *(dev_t *)data,
+				 * 加入hash table之前,需要设置BDEV_I(inode)->bdev.bd_dev = *(dev_t *)data
+				*/  
 				goto set_failed;
 
 			inodes_stat.nr_inodes++;
@@ -981,8 +986,13 @@ EXPORT_SYMBOL(ilookup);
  * 其中test是用于比较的方法，这样的话寻找inode就不需要知道ino号，提供的test方法来 
  * 比较inode是否是我们正在寻找的inode 
  */
- //inode number不足以用于唯一标识inode时候使用
- //iget5_locked还会调用set将设备号放入新产生的block_device对象的bd_dev成员中
+/*
+ * inode number不足以用于唯一标识inode时候使用iget5_locked还会调用set将设备
+ * 号放入新产生的block_device对象的bd_dev成员中.注意调用ifind获取inode后,这个
+ * inode没有LOCK的标志,只有调用get_new_inode分配的(get_new_inode也会搜索,这里需要是“分配”)
+ * inode有LOCK标志.正如注释所说的,如果inode不在cache中,get_new_inode()被调用,
+ * 用于分配一个新的inode,而这个inode的被设置了LOCK,NEW的标志,并被置于hashtable上
+*/
 struct inode *iget5_locked(struct super_block *sb, unsigned long hashval,
 		int (*test)(struct inode *, void *),
 		int (*set)(struct inode *, void *), void *data)

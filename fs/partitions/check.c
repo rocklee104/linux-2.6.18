@@ -309,6 +309,7 @@ static inline void disk_sysfs_add_subdirs(struct gendisk *disk)
 
 void delete_partition(struct gendisk *disk, int part)
 {
+	//次分区的下标从0开始 
 	struct hd_struct *p = disk->part[part-1];
 	if (!p)
 		return;
@@ -442,6 +443,7 @@ void register_disk(struct gendisk *disk)
 	/* scan partition table, but suppress uevents */
 	bdev->bd_invalidated = 1;
 	disk->part_uevent_suppress = 1;
+	//获取填充过的主分区bdev
 	err = blkdev_get(bdev, FMODE_READ, 0);
 	disk->part_uevent_suppress = 0;
 	if (err < 0)
@@ -474,6 +476,7 @@ int rescan_partitions(struct gendisk *disk, struct block_device *bdev)
     //清除bdev->bd_invalidated标志
 	bdev->bd_invalidated = 0;
 	for (p = 1; p < disk->minors; p++)
+		//次分区的个数为minors-1
 		delete_partition(disk, p);
 	if (disk->fops->revalidate_disk)
 		disk->fops->revalidate_disk(disk);

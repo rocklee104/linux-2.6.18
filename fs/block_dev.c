@@ -345,6 +345,7 @@ static inline unsigned long hash(dev_t dev)
 	return MAJOR(dev)+MINOR(dev);
 }
 
+//bdev伪文件系统中与inode关联的bdev.bd_dev中保存了这个块设备的设备号
 static int bdev_test(struct inode *inode, void *data)
 {
 	return BDEV_I(inode)->bdev.bd_dev == *(dev_t *)data;
@@ -427,13 +428,16 @@ void bdput(struct block_device *bdev)
 
 EXPORT_SYMBOL(bdput);
 
-//通过inode获取block_device
+//通过inode获取block_device,这个inode和bdev关联到位了
 static struct block_device *bd_acquire(struct inode *inode)
 {
 	struct block_device *bdev;
 
 	spin_lock(&bdev_lock);
-	//如果这个设备之前被打开过则可以直接通过i_bdev获取  
+	/*
+	 * 如果这个设备调用过bdget在bdev中生成过bdev_inode的节点, 比如调用过register_disk
+	 * 就可以通过inode->i_bdev直接获取block_device对象
+	*/ 
 	bdev = inode->i_bdev;
 	if (bdev) {
 		//增加引用计数
@@ -924,9 +928,11 @@ static int __blkdev_put(struct block_device *bdev, unsigned int subclass)
 		kill_bdev(bdev);
 	}
 	if (bdev->bd_contains == bdev) {
+		//主分区
 		if (disk->fops->release)
 			ret = disk->fops->release(bd_inode, NULL);
 	} else {
+		//次分区
 		mutex_lock_nested(&bdev->bd_contains->bd_mutex,
 				  subclass + 1);
 		bdev->bd_contains->bd_part_count--;
@@ -979,7 +985,10 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 
 	file->f_mapping = bdev->bd_inode->i_mapping;
 	lock_kernel();
-    //函数返回后，part中保存了分区个数
+	/*
+	 * 函数返回后，part中保存了分区个数,register_disk调用这个函数的时候,
+	 * bdev->bd_dev中保存的是gendisk的设备号(MKDEV(disk->major, disk->first_minor))
+	*/ 
 	disk = get_gendisk(bdev->bd_dev, &part);
 	if (!disk) {
 		unlock_kernel();
@@ -1009,9 +1018,11 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 			if (!bdev->bd_openers) {
 				//给bdev的block size 赋值。一个扇区512字节,左移9位
 				bd_set_size(bdev,(loff_t)get_capacity(disk)<<9);
+				//获取请求队列的backing_dev_info
 				bdi = blk_get_backing_dev_info(bdev);
 				if (bdi == NULL)
 					bdi = &default_backing_dev_info;
+				//inode地址空间中的backing_dev_info需要和请求队列中的一致
 				bdev->bd_inode->i_data.backing_dev_info = bdi;
 			}
 			if (bdev->bd_invalidated)
@@ -1161,6 +1172,10 @@ static int blkdev_open(struct inode * inode, struct file * filp)
 	 */
 	filp->f_flags |= O_LARGEFILE;
 
+	/*
+	 * 这里为什么不用I_BDEV的原因是调用这个函数的时候,
+	 * 可能在bdev中还没有生成过相应的节点,使用bd_acquire更加安全
+	*/ 
 	bdev = bd_acquire(inode);
 
 	res = do_open(bdev, filp, BD_MUTEX_NORMAL);

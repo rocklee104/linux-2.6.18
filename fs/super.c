@@ -446,7 +446,9 @@ restart:
  *	Scans the superblock list and finds the superblock of the file system
  *	mounted on the device given. %NULL is returned if no match is found.
  */
-
+/*
+* 扫描super block链表，如果bdev挂载到一个文件系统上，找到这个文件系统的sb 
+*/
 struct super_block * get_super(struct block_device *bdev)
 {
 	struct super_block *sb;

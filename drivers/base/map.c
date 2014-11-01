@@ -117,7 +117,7 @@ retry:
 		struct module *owner;
 		void *data;
 
-		//链表中的元素, range从小到大排列, p->dev应该要<=dev,
+		//链表中的元素, range从小到大排列,因为range也是次设备号,故设备号从小到大排列
 		//p->dev + p->range - 1也就是最大的一个次设备号成员应该>=dev,
 		//初始化后p->dev就是主设备号, p->range为(-1)UL
 		if (p->dev > dev || p->dev + p->range - 1 < dev)
@@ -135,7 +135,7 @@ retry:
 		data = p->data;
 		probe = p->get;
 		best = p->range - 1;
-		//获取次设备号
+		//如果一个设备之前注册过了,这个index为0
 		*index = dev - p->dev;
 		if (p->lock && p->lock(dev, data) < 0) {
 			module_put(owner);

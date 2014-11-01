@@ -608,9 +608,9 @@ struct inode {
 	struct dquot		*i_dquot[MAXQUOTAS];
 #endif
 	/* These three should probably be a union */
-    //链表元素,链表头是字符设备/块设备的lis 
+    //链表元素,链表头是字符设备/块设备的list 
 	struct list_head	i_devices;
-//后续的代码中,以下3个成员是一个联合中的
+	//后续的代码中,以下3个成员是一个联合中的
 	struct pipe_inode_info	*i_pipe;
 	struct block_device	*i_bdev;
 	struct cdev		*i_cdev;

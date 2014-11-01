@@ -152,6 +152,7 @@ int wake_bit_function(wait_queue_t *wait, unsigned mode, int sync, void *arg)
 	if (wait_bit->key.flags != key->flags ||
 			wait_bit->key.bit_nr != key->bit_nr ||
 			test_bit(key->bit_nr, key->flags))
+        //不是要找的wait_bit,或者flag的bit_nr仍然被置位
 		return 0;
 	else
 		return autoremove_wake_function(wait, mode, sync, key);
