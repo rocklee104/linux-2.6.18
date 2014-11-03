@@ -37,7 +37,12 @@ static inline int new_valid_dev(dev_t dev)
 {
 	return 1;
 }
+/* 旧的设备号是unsigned short型,占用2个字节.
+ * dev是unsigned int型是dev_t的外部表示,次设备号0-7,20-31用作次设备号的剩余部分,主设备号8-19, 
+ * dev的内部表示:次设备号0-19,主设备号20-31
+*/
 
+//将内部表示的dev_t转换成外部使用的u32
 static inline u32 new_encode_dev(dev_t dev)
 {
 	unsigned major = MAJOR(dev);
@@ -45,10 +50,14 @@ static inline u32 new_encode_dev(dev_t dev)
 	return (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
 }
 
+//将外部表示的u32转换成内核使用的dev_t
 static inline dev_t new_decode_dev(u32 dev)
 {
+	//外部表示的设备号主设备号占用8-19共12位
 	unsigned major = (dev & 0xfff00) >> 8;
+	//外部表示的设备号次设备号占用0-7,20-31位 
 	unsigned minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
+	//转换成设备号的内部表示
 	return MKDEV(major, minor);
 }
 

@@ -451,7 +451,8 @@ void register_disk(struct gendisk *disk)
 	blkdev_put(bdev);
 
 exit:
-	/* announce disk after possible partitions are already created */
+	/* announce disk after possible partitions are already created */ 
+	//通知udev在/dev下生成设备节点
 	kobject_uevent(&disk->kobj, KOBJ_ADD);
 
 	/* announce possible partitions */
