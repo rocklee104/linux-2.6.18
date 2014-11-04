@@ -447,7 +447,10 @@ static struct block_device *bd_acquire(struct inode *inode)
 	}
 	spin_unlock(&bdev_lock);
 
-	//通过设备号的信息来获取block device实例  
+	/*
+	 * 通过设备号的信息来获取block device实例,这个设备号的传递过程:
+	 * 设备驱动中注册->add_disk->udev->shmem_mknod->shmem_get_inode->init_special_inode
+	*/
 	bdev = bdget(inode->i_rdev);
 	if (bdev) {
 		spin_lock(&bdev_lock);
