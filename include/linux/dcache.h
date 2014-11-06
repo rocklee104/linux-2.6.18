@@ -85,7 +85,7 @@ struct dcookie_struct;
 struct dentry {
 	//被多少进程使用, 为0时,就被置于lru链表上
 	atomic_t d_count;
-	//由d_lock保护
+	//由d_lock保护,比如DCACHE_UNHASHED
 	unsigned int d_flags;		/* protected by d_lock */
 	spinlock_t d_lock;		/* per dentry lock */
 	//文件名所属的inode,如果d_inode==NULL,这个dentry就是一个negtive的状态
@@ -115,9 +115,7 @@ struct dentry {
 	} d_u;
 	//链表头, 子目录的目录项链表的d_child都是此链表的成员
 	struct list_head d_subdirs;	/* our children */
-    /*
-     *链表头是inode的i_dentry, 在存在硬链接时会有1个inode对应多个dentry的情况. 
-    */
+    //链表头是inode的i_dentry, 在存在硬链接时会有1个inode对应多个dentry的情况.  
 	struct list_head d_alias;	/* inode alias list */
 	unsigned long d_time;		/* used by d_revalidate */
 	//操作由底层文件系统实现

@@ -464,6 +464,7 @@ static struct block_device *bd_acquire(struct inode *inode)
 			atomic_inc(&bdev->bd_inode->i_count);
 			inode->i_bdev = bdev;
 			inode->i_mapping = bdev->bd_inode->i_mapping;
+			//多个设备节点指向同一个设备
 			list_add(&inode->i_devices, &bdev->bd_inodes);
 		}
 		spin_unlock(&bdev_lock);

@@ -643,12 +643,12 @@ struct inode {
 	struct list_head	inotify_watches; /* watches on this inode */
 	struct mutex		inotify_mutex;	/* protects the watches list */
 #endif
-	//inode的状态标志
+	//inode的状态标志,比如I_NEW
 	unsigned long		i_state;
 	/*
-     *inode dirty的时间, 以jiffies为单位。如果在回写的控制参数中指定了 
-     *older_than_this条件,那么在标记为dirty的inode中，只有jiffies - dirty_when > 
-     *older_than_this的inode才会被刷入 
+     * inode dirty的时间, 以jiffies为单位。如果在回写的控制参数中指定了 
+     * older_than_this条件,那么在标记为dirty的inode中，只有jiffies - dirty_when > 
+     * older_than_this的inode才会被刷入 
     */  
 	unsigned long		dirtied_when;	/* jiffies of first dirtying */
 
