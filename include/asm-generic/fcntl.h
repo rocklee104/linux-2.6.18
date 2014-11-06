@@ -39,7 +39,10 @@
 #define O_DIRECT	00040000	/* direct disk access hint */
 #endif
 #ifndef O_LARGEFILE
-//转化为16进制后是8000
+/*
+ * 转化为16进制后是8000,由于read/write的偏移量都是unsigned int型的,
+ * 只能支持4G大小内的文件.这个标志用于支持大文件
+*/
 #define O_LARGEFILE	00100000
 #endif
 

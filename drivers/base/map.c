@@ -135,7 +135,10 @@ retry:
 		data = p->data;
 		probe = p->get;
 		best = p->range - 1;
-		//如果一个设备之前注册过了,这个index为0
+		/*
+		 * 如果一个设备之前注册过了,这个index为0,比如主设备.从设备肯定不会注册,
+		 * 这个index - 1就是从设备的下标.
+		*/
 		*index = dev - p->dev;
 		if (p->lock && p->lock(dev, data) < 0) {
 			module_put(owner);

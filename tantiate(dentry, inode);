@@ -1,0 +1,321 @@
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 376d57e..984829d 100755
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -22,11 +22,13 @@
+ #include <linux/uio.h>
+ #include <linux/namei.h>
+ #include <asm/uaccess.h>
+-
++ 
+ struct bdev_inode {
+ 	struct block_device bdev;
+ 	struct inode vfs_inode;
+ };
++extern int rocklee_flag;
++extern int register_flag;
+ 
+ //通过inode找到bdev_inode
+ static inline struct bdev_inode *BDEV_I(struct inode *inode)
+@@ -305,7 +307,7 @@ static struct super_operations bdev_sops = {
+ static int bd_get_sb(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *data, struct vfsmount *mnt)
+ {
+-	return get_sb_pseudo(fs_type, "bdev:", &bdev_sops, 0x62646576, mnt);
++	return get_sb_single(fs_type, flags, data, bdev_fill_super, mnt);
+ }
+ 
+ static struct file_system_type bd_type = {
+@@ -1002,12 +1004,19 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
+ 
+ 	mutex_lock_nested(&bdev->bd_mutex, subclass);
+ 
++	if (rocklee_flag == 1)
++		printk("#### func %s, line %d, bd_openers %d dev_t 0x%x part %d ###\n",
++		__func__, __LINE__, bdev->bd_openers, bdev->bd_dev, part);
++
+ 	//此block device没有被打开过
+ 	if (!bdev->bd_openers) {
+ 		bdev->bd_disk = disk;
+ 		bdev->bd_contains = bdev;
+         //没有使用fdisk之前，是不会有分区信息的，即没有sda1,sda2等设备
+ 		if (!part) {
++				if (rocklee_flag == 1)
++		printk("#### func %s, line %d, bd_openers %d dev_t 0x%x part %d ###\n",
++		__func__, __LINE__, bdev->bd_openers, bdev->bd_dev, part);
+ 			//block device是一个磁盘
+ 			struct backing_dev_info *bdi;
+ 			if (disk->fops->open) {
+@@ -1019,15 +1028,25 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
+ 			}
+ 			//disk->fops->open有可能会修改bd_openers
+ 			if (!bdev->bd_openers) {
++					if (rocklee_flag == 1)
++		printk("#### func %s, line %d, bd_openers %d dev_t 0x%x part %d bd_invalidated %d blk size 0x%x###\n",
++		__func__, __LINE__, bdev->bd_openers, bdev->bd_dev, part, bdev->bd_invalidated, bdev->bd_block_size);
+ 				//给bdev的block size 赋值。一个扇区512字节,左移9位
+ 				bd_set_size(bdev,(loff_t)get_capacity(disk)<<9);
++				if (rocklee_flag == 1)
++					printk("#### blk size 0x%x###\n", bdev->bd_block_size);
+ 				//获取请求队列的backing_dev_info
+ 				bdi = blk_get_backing_dev_info(bdev);
+ 				if (bdi == NULL)
+ 					bdi = &default_backing_dev_info;
+ 				//inode地址空间中的backing_dev_info需要和请求队列中的一致
++				if (rocklee_flag == 1)
++					printk("### blk info 0x%x###\n", bdev->bd_inode->i_data.backing_dev_info);
+ 				bdev->bd_inode->i_data.backing_dev_info = bdi;
++				if (rocklee_flag == 1)
++					printk("### blk info 0x%x###\n", bdev->bd_inode->i_data.backing_dev_info);
+ 			}
++			//在register_disk中设置了这个标志
+ 			if (bdev->bd_invalidated)
+                 //重新扫描分区
+ 				rescan_partitions(disk, bdev);
+@@ -1085,6 +1104,10 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
+ 	bdev->bd_openers++;
+ 	mutex_unlock(&bdev->bd_mutex);
+ 	unlock_kernel();
++		if (rocklee_flag == 1)
++		printk("#### func %s, line %d, bd_openers %d dev_t 0x%x###\n", __func__, __LINE__, bdev->bd_openers, bdev->bd_dev);
++		if (register_flag == 0)
++			rocklee_flag = 0;
+ 	return 0;
+ 
+ out_first:
+@@ -1100,6 +1123,7 @@ out:
+ 	unlock_kernel();
+ 	if (ret)
+ 		bdput(bdev);
++	rocklee_flag = 0;
+ 	return ret;
+ }
+ 
+diff --git a/fs/inode.c b/fs/inode.c
+index b7dc249..232923f 100755
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -23,6 +23,8 @@
+ #include <linux/inotify.h>
+ #include <linux/mount.h>
+ 
++extern int rocklee_flag;
++
+ /*
+  * This is needed for the following functions:
+  *  - inode_has_buffers
+@@ -643,6 +645,9 @@ static struct inode * get_new_inode(struct super_block *sb, struct hlist_head *h
+ {
+ 	struct inode * inode;
+ 
++	if (rocklee_flag  == 1)
++		printk("#### func %s, line %d  ###\n", __func__, __LINE__); 
++
+ 	inode = alloc_inode(sb);
+ 	if (inode) {
+ 		struct inode * old;
+diff --git a/fs/libfs.c b/fs/libfs.c
+old mode 100644
+new mode 100755
+index ac02ea6..ae5ae45
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -207,7 +207,7 @@ int get_sb_pseudo(struct file_system_type *fs_type, char *name,
+ 	if (IS_ERR(s))
+ 		return PTR_ERR(s);
+ 
+-	s->s_flags = MS_NOUSER;
++	s->s_flags = MS_NOUSER; 
+ 	s->s_maxbytes = ~0ULL;
+ 	s->s_blocksize = 1024;
+ 	s->s_blocksize_bits = 10;
+@@ -238,6 +238,46 @@ Enomem:
+ 	return -ENOMEM;
+ }
+ 
++#if 0
++int get_sb_single_pseudo(struct file_system_type *fs_type,
++	int flags, void *data,
++	int (*fill_super)(struct super_block *, void *, int),
++	struct vfsmount *mnt)
++{
++	struct super_block *s;
++	int error;
++	struct inode *root;
++
++	s = sget(fs_type, compare_single, set_anon_super, NULL);
++	if (IS_ERR(s))
++		return PTR_ERR(s);
++
++	s->s_flags = MS_NOUSER;
++	s->s_maxbytes = MAX_LFS_FILESIZE;
++	s->s_blocksize = PAGE_SIZE;
++	s->s_blocksize_bits = PAGE_SHIFT;
++	s->s_magic = magic;
++	s->s_op = ops ? ops : &simple_super_operations;
++	s->s_time_gran = 1;
++	root = new_inode(s);
++	if (!root)
++		goto Enomem;
++	
++	if (!s->s_root) {
++		s->s_flags = flags;
++		error = fill_super(s, data, flags & MS_SILENT ? 1 : 0);
++		if (error) {
++			up_write(&s->s_umount);
++			deactivate_super(s);
++			return error;
++		}
++		s->s_flags |= MS_ACTIVE;
++	}
++	do_remount_sb(s, flags, data, 0);
++	return simple_set_mnt(mnt, s);
++}
++#endif
++
+ int simple_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+ {
+ 	struct inode *inode = old_dentry->d_inode;
+diff --git a/fs/open.c b/fs/open.c
+index 6589a5f..73a990c 100755
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -31,6 +31,8 @@
+ 
+ #include <asm/unistd.h>
+ 
++extern int rocklee_flag;
++
+ int vfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ {
+ 	int retval = -ENODEV;
+@@ -1121,8 +1123,13 @@ EXPORT_SYMBOL(fd_install);
+ long do_sys_open(int dfd, const char __user *filename, int flags, int mode)
+ {
+ 	char *tmp = getname(filename);
+-	int fd = PTR_ERR(tmp);
++	int fd = PTR_ERR(tmp); 
+ 
++	if (!strncmp(filename, "/dev/ramhda", 11)) {
++		printk("### my device is opening ###\n");
++		rocklee_flag = 1;
++	}
++	
+ 	if (!IS_ERR(tmp)) {
+ 		//找到一个未使用的fd
+ 		fd = get_unused_fd();
+@@ -1138,6 +1145,8 @@ long do_sys_open(int dfd, const char __user *filename, int flags, int mode)
+ 		}
+ 		putname(tmp);
+ 	}
++
++ 	rocklee_flag = 0;
+ 	return fd;
+ }
+ 
+diff --git a/fs/partitions/check.c b/fs/partitions/check.c
+index e5cfb7f..7349ca0 100755
+--- a/fs/partitions/check.c
++++ b/fs/partitions/check.c
+@@ -35,6 +35,9 @@
+ #include "efi.h"
+ #include "karma.h"
+ 
++int rocklee_flag = 0;
++int register_flag = 0;
++
+ #ifdef CONFIG_BLK_DEV_MD
+ extern void md_autodetect_dev(dev_t dev);
+ #endif
+@@ -349,8 +352,10 @@ void add_partition(struct gendisk *disk, int part, sector_t start, sector_t len)
+ 	p->kobj.parent = &disk->kobj;
+ 	p->kobj.ktype = &ktype_part;
+ 	kobject_init(&p->kobj);
++	//在/sys/block下增加分区的节点
+ 	kobject_add(&p->kobj);
+ 	if (!disk->part_uevent_suppress)
++		//在/dev下增加分区的节点
+ 		kobject_uevent(&p->kobj, KOBJ_ADD);
+ 	sysfs_create_link(&p->kobj, &block_subsys.kset.kobj, "subsystem");
+ 	partition_sysfs_add_subdir(p);
+@@ -404,7 +409,13 @@ void register_disk(struct gendisk *disk)
+ 	char *s;
+ 	int i;
+ 	struct hd_struct *p;
+-	int err;
++	int err; 
++
++	if (!strncmp(disk->disk_name, "ramhda", 6)) {
++		printk("### my device is registering ###\n");
++		rocklee_flag = 1;
++		register_flag = 1;
++	}
+     
+     /**
+      * ramdisk的初始化流程： 
+@@ -445,12 +456,20 @@ void register_disk(struct gendisk *disk)
+ 	disk->part_uevent_suppress = 1;
+ 	//获取填充过的主分区bdev
+ 	err = blkdev_get(bdev, FMODE_READ, 0);
++
++	if (rocklee_flag  == 1)
++		printk("#### func %s, line %d, bd_openers %d dev_t 0x%x, blksize 0x%x ###\n", 
++		__func__, __LINE__, bdev->bd_openers, bdev->bd_dev, bdev->bd_block_size);
+ 	disk->part_uevent_suppress = 0;
+ 	if (err < 0)
+ 		goto exit;
+ 	blkdev_put(bdev);
+ 
+-exit:
++	if (rocklee_flag  == 1)
++		printk("#### func %s, line %d, bd_openers %d dev_t 0x%x, blksize 0x%x ###\n", 
++		__func__, __LINE__, bdev->bd_openers, bdev->bd_dev, bdev->bd_block_size);
++
++exit: 
+ 	/* announce disk after possible partitions are already created */ 
+ 	//通知udev在/dev下生成设备节点
+ 	kobject_uevent(&disk->kobj, KOBJ_ADD);
+@@ -462,6 +481,9 @@ exit:
+ 			continue;
+ 		kobject_uevent(&p->kobj, KOBJ_ADD);
+ 	}
++
++	rocklee_flag = 0;
++	register_flag = 0;
+ }
+ 
+ int rescan_partitions(struct gendisk *disk, struct block_device *bdev)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5895913..9f496ae 100755
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -456,7 +456,7 @@ struct block_device {
+ 	dev_t			bd_dev;  /* not a kdev_t - it's a search key */
+ 	//inode of block device
+ 	struct inode *		bd_inode;	/* will die */
+-	//调用do_open打开该块设备的次数
++	//调用do_open打开该块设备的次数,调用do_open时,bd_openers++,调用完后bd_openers--
+ 	int			bd_openers;
+ 	struct mutex		bd_mutex;	/* open/close mutex */
+ 	struct mutex		bd_mount_mutex;	/* mount mutex */
+diff --git a/kernel/sched.c b/kernel/sched.c
+index 144ed30..82d40c7 100755
+--- a/kernel/sched.c
++++ b/kernel/sched.c
+@@ -3529,9 +3529,13 @@ static void __wake_up_common(wait_queue_head_t *q, unsigned int mode,
+ 	list_for_each_safe(tmp, next, &q->task_list) {
+ 		wait_queue_t *curr = list_entry(tmp, wait_queue_t, task_list);
+ 		unsigned flags = curr->flags;
+-
+-		//唤醒所有非独占的等待队列
+-		//对于独占的等待队列,执行nr_exclusive个独占的等待队列及全部的非独占等待队列
++ 
++		/*
++		 * 唤醒所有非独占的等待队列,对于独占的等待队列,
++		 * 执行nr_exclusive个独占的等待队列及全部的非独占等待队列.
++		 * 这里的&&用的非常巧妙,只有当&&左边的语句为真,才会执行右边的语句,
++		 * 也就是!--nr_exclusive不是每次都执行.
++		*/
+ 		if (curr->func(curr, mode, sync, key) &&
+ 				(flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive)
+ 			break;

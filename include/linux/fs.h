@@ -456,13 +456,25 @@ struct block_device {
 	dev_t			bd_dev;  /* not a kdev_t - it's a search key */
 	//inode of block device
 	struct inode *		bd_inode;	/* will die */
-	//调用do_open打开该块设备的次数
+	//调用do_open打开该块设备的次数,调用do_open时,bd_openers++,调用完后bd_openers--
 	int			bd_openers;
 	struct mutex		bd_mutex;	/* open/close mutex */
 	struct mutex		bd_mount_mutex;	/* mount mutex */
 	//链表头,链表成员是inode->i_devices, 该链表包含了表示该设备的设备特殊文件的所有inode
 	struct list_head	bd_inodes;
+	/*
+	 * 存放代表块设备持有者的线性地址。持有者并不是进行I/O数据传送的块设备驱动程序；
+	 * 准确地说，它是一个内核组件，使用设备并拥有独一无二的特权
+	 *（例如，它可以自由使用块设备描述符的bd_private字段）。
+	 * 典型地，块设备的持有者是安装在该设备上的文件系统。
+	 * 当块设备文件被打开进行互斥访问时，另一个普遍的问题出现了：
+	 * 持有者就是对应的文件对象。
+	*/
 	void *			bd_holder;
+	/*
+	 * 同一个内核组件可以多次调用bdclaim()函数，每调用一次都增加bd_holders的值。
+	 * 为了释放块设备，内核组件必须调用bd_release()函数bd_holders次
+	*/
 	int			bd_holders;
 #ifdef CONFIG_SYSFS
 	struct list_head	bd_holder_list;

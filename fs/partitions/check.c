@@ -349,8 +349,10 @@ void add_partition(struct gendisk *disk, int part, sector_t start, sector_t len)
 	p->kobj.parent = &disk->kobj;
 	p->kobj.ktype = &ktype_part;
 	kobject_init(&p->kobj);
+	//在/sys/block下增加分区的节点
 	kobject_add(&p->kobj);
 	if (!disk->part_uevent_suppress)
+		//在/dev下增加分区的节点
 		kobject_uevent(&p->kobj, KOBJ_ADD);
 	sysfs_create_link(&p->kobj, &block_subsys.kset.kobj, "subsystem");
 	partition_sysfs_add_subdir(p);

@@ -428,15 +428,15 @@ void bdput(struct block_device *bdev)
 
 EXPORT_SYMBOL(bdput);
 
-//通过inode获取block_device,这个inode和bdev关联到位了
+// /dev/中的inode->通过设备号获取bdev fs中的inode->bdev fs中的bdev
 static struct block_device *bd_acquire(struct inode *inode)
 {
 	struct block_device *bdev;
 
 	spin_lock(&bdev_lock);
 	/*
-	 * 如果这个设备调用过bdget在bdev中生成过bdev_inode的节点, 比如调用过register_disk
-	 * 就可以通过inode->i_bdev直接获取block_device对象
+	 * 之前调用bd_acquire,inode(/dev的tmpfs)中的i_bdev就已经指向了block device,
+	 * 否则只有dev fs中的inode->i_bdev指向了block device
 	*/ 
 	bdev = inode->i_bdev;
 	if (bdev) {
@@ -489,6 +489,7 @@ void bd_forget(struct inode *inode)
 		iput(bdev->bd_inode);
 }
 
+//将bd_holder字段设置为一个特定的地址
 int bd_claim(struct block_device *bdev, void *holder)
 {
 	int res;
@@ -496,15 +497,20 @@ int bd_claim(struct block_device *bdev, void *holder)
 
 	/* first decide result */
 	if (bdev->bd_holder == holder)
+		//bdev已经被holder hold过一次了
 		res = 0;	 /* already a holder */
 	else if (bdev->bd_holder != NULL)
+		//bdev被其他的holder hold住了
 		res = -EBUSY; 	 /* held by someone else */
 	else if (bdev->bd_contains == bdev)
-		res = 0;  	 /* is a whole device which isn't held */
+		//bdev没有被其他的holder hold住,并且是主设备
+		res = 0;     	/* is a whole device which isn't held */
 
 	else if (bdev->bd_contains->bd_holder == bd_claim)
+		//bdev的holder是NULL,并且是从设备
 		res = 0; 	 /* is a partition of a device that is being partitioned */
 	else if (bdev->bd_contains->bd_holder != NULL)
+		//主设备被其他holder hold住了,次设备也就不能被hold住
 		res = -EBUSY;	 /* is a partition of a held device */
 	else
 		res = 0;	 /* is a partition of an un-held device */
@@ -515,6 +521,10 @@ int bd_claim(struct block_device *bdev, void *holder)
 		 * will be incremented twice, and bd_holder will
 		 * be set to bd_claim before being set to holder
 		 */
+        /*
+         * 对于主设备来说,bd_holders会自加2次,bd_holder也会被设置两次.
+         * 第一次设置为bd_claim,第二次设置为holder(一般是struct file*)
+        */
 		bdev->bd_contains->bd_holders ++;
 		bdev->bd_contains->bd_holder = bd_claim;
 		bdev->bd_holders++;
@@ -530,8 +540,10 @@ void bd_release(struct block_device *bdev)
 {
 	spin_lock(&bdev_lock);
 	if (!--bdev->bd_contains->bd_holders)
+		//首先release主设备
 		bdev->bd_contains->bd_holder = NULL;
 	if (!--bdev->bd_holders)
+		//再release从设备
 		bdev->bd_holder = NULL;
 	spin_unlock(&bdev_lock);
 }
@@ -1025,17 +1037,19 @@ do_open(struct block_device *bdev, struct file *file, unsigned int subclass)
 				bdi = blk_get_backing_dev_info(bdev);
 				if (bdi == NULL)
 					bdi = &default_backing_dev_info;
-				//inode地址空间中的backing_dev_info需要和请求队列中的一致
+				//inode地址空间中的backing_dev_info需要和请求队列中的一致 
 				bdev->bd_inode->i_data.backing_dev_info = bdi;
 			}
+			//在register_disk中设置了这个标志
 			if (bdev->bd_invalidated)
-                //重新扫描分区
+                //重新扫描分区 
 				rescan_partitions(disk, bdev);
 		} else {
 			//是分区
 			struct hd_struct *p;
-            //主block device的对象
+            //主block device的对象 
 			struct block_device *whole;
+			//通过设备号找到主设备
 			whole = bdget_disk(disk, 0);
 			ret = -ENOMEM;
 			if (!whole)
@@ -1177,7 +1191,7 @@ static int blkdev_open(struct inode * inode, struct file * filp)
 
 	/*
 	 * 这里为什么不用I_BDEV的原因是调用这个函数的时候,
-	 * 可能在bdev中还没有生成过相应的节点,使用bd_acquire更加安全
+	 * 可能在bdev fs中还没有生成过相应的节点,使用bd_acquire更加安全
 	*/ 
 	bdev = bd_acquire(inode);
 
@@ -1197,6 +1211,11 @@ static int blkdev_open(struct inode * inode, struct file * filp)
 
 static int blkdev_close(struct inode * inode, struct file * filp)
 {
+	/*
+	 * 在alloc_inode中inode->i_mapping->host已经指向了自己.
+	 * 在do_open中file->f_mapping = bdev->bd_inode->i_mapping;
+	 * 故filp->f_mapping->host指向bdev fs中的inode
+	*/ 
 	struct block_device *bdev = I_BDEV(filp->f_mapping->host);
 	if (bdev->bd_holder == filp)
 		bd_release(bdev);

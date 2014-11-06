@@ -3530,8 +3530,12 @@ static void __wake_up_common(wait_queue_head_t *q, unsigned int mode,
 		wait_queue_t *curr = list_entry(tmp, wait_queue_t, task_list);
 		unsigned flags = curr->flags;
 
-		//唤醒所有非独占的等待队列
-		//对于独占的等待队列,执行nr_exclusive个独占的等待队列及全部的非独占等待队列
+		/*
+		 * 唤醒所有非独占的等待队列,对于独占的等待队列,
+		 * 执行nr_exclusive个独占的等待队列及全部的非独占等待队列.
+		 * 这里的&&用的非常巧妙,只有当&&左边的语句为真,才会执行右边的语句,
+		 * 也就是!--nr_exclusive不是每次都执行.
+		*/
 		if (curr->func(curr, mode, sync, key) &&
 				(flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive)
 			break;
