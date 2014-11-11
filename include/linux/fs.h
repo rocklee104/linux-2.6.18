@@ -569,6 +569,7 @@ struct inode {
      *2.inode_in_use:inode正在使用链表,inode是clean的,并且i_count>0,链表头是inode_in_use 
      *3.dirty链表:dirty的inode链表，链表头是sb->s_dirty 
      * 
+     *4.用于记录整个fs中的inode的链表
      *i_state的值等于I_DIRTY_SYNC，I_DIRTY_DATASYNC，I_DIRTY_PAGES其中一个， 
      *就表示inode dirty
     */
