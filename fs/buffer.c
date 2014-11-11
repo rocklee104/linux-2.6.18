@@ -1131,6 +1131,7 @@ init_page_buffers(struct page *page, struct block_device *bdev,
 			bh->b_blocknr = block;
 			if (uptodate)
 				set_buffer_uptodate(bh);
+			//b_blocknr和b_bdev指向了块设备的有效数据就表示mapped
 			set_buffer_mapped(bh);
 		}
         //如果bh被map过了，就什么都不做，跳到下一个buffer
@@ -1212,6 +1213,7 @@ failed:
  * some of those buffers may be aliases of filesystem data.
  * grow_dev_page() will go BUG() if this happens.
  */
+//创建符合条件的bh
 static int
 grow_buffers(struct block_device *bdev, sector_t block, int size)
 {
@@ -1495,6 +1497,10 @@ lookup_bh_lru(struct block_device *bdev, sector_t block, int size)
  * it in the LRU and mark it as accessed.  If it is not present then return
  * NULL
  */
+/*
+ * 首先在lru中搜索符合条件的bh,没有找到就在页缓存中搜索bh,
+ * 如果在页缓存中搜索到了,就将这个bh加入lru
+*/
 struct buffer_head *
 __find_get_block(struct block_device *bdev, sector_t block, int size)
 {
@@ -2886,11 +2892,15 @@ static int end_bio_bh_io_sync(struct bio *bio, unsigned int bytes_done, int err)
 		set_bit(BH_Eopnotsupp, &bh->b_state);
 	}
 
+	//通过__bread_slow调用时bh->b_end_io为end_buffer_read_sync
+	//如果bi_flags的BIO_UPTODATE置位,test_bit返回1
 	bh->b_end_io(bh, test_bit(BIO_UPTODATE, &bio->bi_flags));
+	//传输完毕,bio就需要释放
 	bio_put(bio);
 	return 0;
 }
 
+//回写指定的块
 int submit_bh(int rw, struct buffer_head * bh)
 {
 	struct bio *bio;
@@ -2915,11 +2925,15 @@ int submit_bh(int rw, struct buffer_head * bh)
 	 * submit_bio -> generic_make_request may further map this bio around
 	 */
 	bio = bio_alloc(GFP_NOIO, 1);
-
+	/*
+	 * bio一个扇区大小是512byte,而bh->b_size肯定是512的倍数,
+	 * 这里获取了本次传输的起始扇区号
+	 */
 	bio->bi_sector = bh->b_blocknr * (bh->b_size >> 9);
 	bio->bi_bdev = bh->b_bdev;
 	bio->bi_io_vec[0].bv_page = bh->b_page;
 	bio->bi_io_vec[0].bv_len = bh->b_size;
+	//指向bh->b_data
 	bio->bi_io_vec[0].bv_offset = bh_offset(bh);
 
 	bio->bi_vcnt = 1;

@@ -361,6 +361,7 @@ struct ext2_super_block {
 	__le32	s_inodes_count;		/* Inodes count *//*total count */
 	__le32	s_blocks_count;		/* Blocks count *//*total count*/
 	__le32	s_r_blocks_count;	/* Reserved blocks count *//*for super user*/
+	//°üº¬ÁËs_r_blocks_count
 	__le32	s_free_blocks_count;	/* Free blocks count *//*including s_r_blocks_count */
 	
 	__le32	s_free_inodes_count;	/* Free inodes count */

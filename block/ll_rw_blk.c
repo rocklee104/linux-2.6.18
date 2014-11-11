@@ -1965,6 +1965,7 @@ blk_init_queue_node(request_fn_proc *rfn, spinlock_t *lock, int node_id)
 	/*
 	 * all done
 	 */
+	 //初始化调度器
 	if (!elevator_init(q, NULL)) {
 		blk_queue_congestion_threshold(q);
 		return q;
@@ -2878,6 +2879,7 @@ static int __make_request(request_queue_t *q, struct bio *bio)
 
 	sector = bio->bi_sector;
 	nr_sectors = bio_sectors(bio);
+	//当前vector中sector的数量
 	cur_nr_sectors = bio_cur_sectors(bio);
 	prio = bio_prio(bio);
 
@@ -2991,16 +2993,22 @@ end_io:
  */
 static inline void blk_partition_remap(struct bio *bio)
 {
+	//获取bio所属的bdev
 	struct block_device *bdev = bio->bi_bdev;
 
 	if (bdev != bdev->bd_contains) {
+		//bdev不是主分区,找到这个设备的分区信息
 		struct hd_struct *p = bdev->bd_part;
 		const int rw = bio_data_dir(bio);
 
+		//增加读写扇区的计数
 		p->sectors[rw] += bio_sectors(bio);
+		//读写次数自加
 		p->ios[rw]++;
 
+		//在分区的起始扇区进行偏移
 		bio->bi_sector += p->start_sect;
+		//bi_bdev指向主分区,这样下次就不需要再去寻找分区的偏移了
 		bio->bi_bdev = bdev->bd_contains;
 	}
 }
@@ -3052,11 +3060,17 @@ void generic_make_request(struct bio *bio)
 
 	might_sleep();
 	/* Test device or partition size, when known. */
+	//maxsector是文件占用的sector个数
 	maxsector = bio->bi_bdev->bd_inode->i_size >> 9;
 	if (maxsector) {
 		sector_t sector = bio->bi_sector;
 
 		if (maxsector < nr_sectors || maxsector - nr_sectors < sector) {
+		/*
+		 * 如果文件所占用的secotors比bio传输的sectors还要小或者
+		 * 本次传输的起始sector+本次传输的sectors要大于文件占用的sectors
+		 * ,就表示传输错误
+		*/ 
 			/*
 			 * This may well happen - the kernel calls bread()
 			 * without checking the size of the device, e.g., when
@@ -3080,6 +3094,7 @@ void generic_make_request(struct bio *bio)
 	do {
 		char b[BDEVNAME_SIZE];
 
+		//bio->bdev->gendisk->queue
 		q = bdev_get_queue(bio->bi_bdev);
 		if (!q) {
 			printk(KERN_ERR
@@ -3107,6 +3122,7 @@ end_io:
 		 * If this device has partitions, remap block n
 		 * of partition p to block n+start(p) of the disk.
 		 */
+		//如果bio所属的bdev是次分区,bi_sector是次分区内的偏移,就需要转换成主设备的偏移
 		blk_partition_remap(bio);
 
 		if (maxsector != -1)
@@ -3118,6 +3134,7 @@ end_io:
 		maxsector = bio->bi_sector;
 		old_dev = bio->bi_bdev->bd_dev;
 
+	    //如果是blk_queue_init_node调用过程,make_request_fn就是__make_request
 		ret = q->make_request_fn(q, bio);
 	} while (ret);
 }

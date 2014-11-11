@@ -74,13 +74,15 @@ struct partition {
 	__le32 nr_sects;		/* nr of sectors in partition */
 } __attribute__((packed));
 
+//一个分区的数据结构
 struct hd_struct {
-	//起始扇区
+	//改分区的起始扇区
 	sector_t start_sect;
-	//扇区数量
+	//改分区的扇区数量
 	sector_t nr_sects;
 	struct kobject kobj;
 	struct kobject *holder_dir;
+	//ios表示读/写操作的次数,sectors表示读/写的扇区数
 	unsigned ios[2], sectors[2];	/* READs and WRITEs */
 	//policy为1表示分区只读,partno表示扇区编号
 	int policy, partno;

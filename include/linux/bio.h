@@ -73,12 +73,12 @@ typedef void (bio_destructor_t) (struct bio *);
  * stacking drivers)
  */
 struct bio {
-	//块io操作的第一个磁盘分区
+	//本次传输的起始扇区号
 	sector_t		bi_sector;
 	//链接到请求队列的下一个bio
 	struct bio		*bi_next;	/* request queue link */
 	struct block_device	*bi_bdev;
-	//bio的状态标志
+	//bio的状态标志,比如BIO_UPTODATE
 	unsigned long		bi_flags;	/* status, command, etc */
 	//io操作标志
 	unsigned long		bi_rw;		/* bottom bits READ/WRITE,

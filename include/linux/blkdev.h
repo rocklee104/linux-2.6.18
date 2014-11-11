@@ -113,6 +113,7 @@ struct request;
 typedef void (rq_end_io_fn)(struct request *, int);
 
 struct request_list {
+	//读/写各占用一个count
 	int count[2];
 	int starved[2];
 	int elvpriv;
@@ -129,13 +130,13 @@ struct request {
 	//链表成员，链表头是struct request_queue的queue_head
 	struct list_head queuelist;
 	struct list_head donelist;
-	//请求标志
+	//请求标志,比如QUEUE_FLAG_STOPPED
 	unsigned long flags;		/* see REQ_ bits below */
 
 	/* Maintain bio traversal state for part by part I/O submission.
 	 * hard_* are block layer internals, no driver should touch them!
 	 */
-	//要传送的下一个扇区号
+	//当前请求要求数据传输的块设备的起始扇区
 	sector_t sector;		/* next sector to submit */
 	//整个请求中要传送的扇区数
 	unsigned long nr_sectors;	/* no. of sectors left to submit */
@@ -201,7 +202,7 @@ struct request {
 	unsigned int cmd_len;
 	//由请求队列的prep_rq_fn方法准备好的预先内置命令所在的缓冲区
 	unsigned char cmd[BLK_MAX_CDB];
-	//通常，由data字段指向的缓冲区中数据的长度
+	//通常,由data字段指向的缓冲区中数据的长度,表示当前请求要求数据传输的总的数据量
 	unsigned int data_len;
 	//由sense字段指向的缓冲区的长度，如果sense是null,则为0
 	unsigned int sense_len;
@@ -349,7 +350,11 @@ struct request_queue
 	 */
 	//为分配请求描述符所使用的数据结构
 	struct request_list	rq;
-	//实现驱动程序的策略例程入口点的方法
+	/*
+	 * 指向块设备驱动程序需要实现的请求处理函数.当内核中的其他组件比如文件系统需要从
+	 * 底层块设备读取或者写入数据时,如果设备驱动程序采用的是request方式实现的,内核会
+	 * 调用该例程.因此该例程需要针对特定的设备实现底层的i/o操作.
+	*/
 	request_fn_proc		*request_fn;
 	//检查是否可能将bio合并到请求队列的最后一个请求中的方法
 	merge_request_fn	*back_merge_fn;
@@ -357,7 +362,13 @@ struct request_queue
 	merge_request_fn	*front_merge_fn;
 	//试图合并请求队列中两个相邻请求的方法
 	merge_requests_fn	*merge_requests_fn;
-	//将一个新请求插入请求队列的方法
+	/*
+	 * 如果驱动程序调用blk_init_queue来处理请求,那么在其调用链中,kernel会为当前请求队列
+	 * 的make_request_fn提供一个标准的实现__make_request.但如果驱动程序采用所谓的make_request
+	 * 方式实现,则驱动程序需要调用blk_queue_make_request为此处的make_request_fn提供一个实现,
+	 * 由于blk_queue_make_request函数的内部不负责创建设备的请求队列,所以make_request方式
+	 * 需要驱动程序调用blk_queue_make_request前显示地为设备创建一个请求队列.
+	*/
 	make_request_fn		*make_request_fn;
 	//该方法把这个请求处理的命令发送给硬件设备
 	prep_rq_fn		*prep_rq_fn;
