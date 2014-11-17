@@ -721,7 +721,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
 	} else {
 		logic_sb_block = sb_block;
 	}
-    //获取含有sb信息的buffer, 第一次读取，设block size是1kb大小的，这里logic_sb_block总是1
+    //获取含有sb信息的buffer, 第一次读取，设block size是1kb大小的，这里logic_sb_block总是1 
 	if (!(bh = sb_bread(sb, logic_sb_block))) {
 		printk ("EXT2-fs: unable to read superblock\n");
 		goto failed_sbi;

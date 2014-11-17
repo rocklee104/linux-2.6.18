@@ -37,6 +37,7 @@
 #include <asm/uaccess.h>
 
 static DEFINE_SPINLOCK(elv_list_lock);
+//所有的io调度算法都会被链接到elv_list中
 static LIST_HEAD(elv_list);
 
 /*
@@ -258,6 +259,11 @@ void elv_dispatch_sort(request_queue_t *q, struct request *rq)
 	list_add(&rq->queuelist, entry);
 }
 
+/*
+ *ELEVATOR_NO_MERGE：队列已经存在的请求中不能包含bio结构，需要创建一个新请求。
+ *ELEVATOR_BACK_MERGE：bio结构可作为末尾的bio而插入到某个请求中；
+ *ELEVATOR_FRONT_MERGE：bio结构可作为某个请求的第一个bio被插入；
+*/
 int elv_merge(request_queue_t *q, struct request **req, struct bio *bio)
 {
 	elevator_t *e = q->elevator;
@@ -569,14 +575,21 @@ void elv_dequeue_request(request_queue_t *q, struct request *rq)
 		q->in_flight++;
 }
 
+/*
+ * 检查请求队列中是否存在待处理的请求--注意,调度队列可能是空的,
+ * 但是i/o调度程序的其他队列可能包含待处理的请求.如果没有待处理的请求,
+ * 那么就调用blk_plug_device插入请求队列
+*/
 int elv_queue_empty(request_queue_t *q)
 {
 	elevator_t *e = q->elevator;
 
 	if (!list_empty(&q->queue_head))
+		//队列不为空
 		return 0;
 
 	if (e->ops->elevator_queue_empty_fn)
+		//队列为空
 		return e->ops->elevator_queue_empty_fn(q);
 
 	return 1;

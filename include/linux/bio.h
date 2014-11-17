@@ -80,7 +80,7 @@ struct bio {
 	struct block_device	*bi_bdev;
 	//bio的状态标志,比如BIO_UPTODATE
 	unsigned long		bi_flags;	/* status, command, etc */
-	//io操作标志
+	//io操作标志,如BIO_RW,低16位是读写标志,高16位是优先级标志 
 	unsigned long		bi_rw;		/* bottom bits READ/WRITE,
 						 * top bits priority
 						 */

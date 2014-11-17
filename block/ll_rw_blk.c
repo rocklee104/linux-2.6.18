@@ -2891,12 +2891,17 @@ static int __make_request(request_queue_t *q, struct bio *bio)
 	 * certain limit bounced to low memory (ie for highmem, or even
 	 * ISA dma in theory)
 	 */
+	/* 
+	 *如果需要,调用blk_queue_bounce建立一个回弹缓冲区,如果回弹缓冲区被建立,
+	 * __make_request将对该缓冲区而不是原先的bio进行操作
+	*/
 	blk_queue_bounce(q, &bio);
 
 	spin_lock_prefetch(q->queue_lock);
 
 	barrier = bio_barrier(bio);
 	if (unlikely(barrier) && (q->next_ordered == QUEUE_ORDERED_NONE)) {
+		//bio要求barrier,但是请求队列不支持barrier
 		err = -EOPNOTSUPP;
 		goto end_io;
 	}
@@ -2904,11 +2909,17 @@ static int __make_request(request_queue_t *q, struct bio *bio)
 	spin_lock_irq(q->queue_lock);
 
 	if (unlikely(barrier) || elv_queue_empty(q))
+		/*
+		 * 如果设置barrier表示队列中的请求顺序执行,不需要合并操作了.
+		 * 如果队列为空,也没必要合并
+		 */
 		goto get_rq;
 
+	/*试图将传入的bio和之前的请求合并*/ 
 	el_ret = elv_merge(q, &req, bio);
 	switch (el_ret) {
 		case ELEVATOR_BACK_MERGE:
+			/*后向合并,合并成功后还可检查是否新填入的bio正好填补了空缺,可以再次合并一下*/ 
 			BUG_ON(!rq_mergeable(req));
 
 			if (!q->back_merge_fn(q, req, bio))
@@ -2921,11 +2932,13 @@ static int __make_request(request_queue_t *q, struct bio *bio)
 			req->nr_sectors = req->hard_nr_sectors += nr_sectors;
 			req->ioprio = ioprio_best(req->ioprio, prio);
 			drive_stat_acct(req, nr_sectors, 0);
+			/*新合并的bio填补空缺口,正好后向的请求连成一片*/
 			if (!attempt_back_merge(q, req))
 				elv_merged_request(q, req);
 			goto out;
 
 		case ELEVATOR_FRONT_MERGE:
+			/*前向合并,并检查新合并的bio是否正好填补了空缺和前面的请求连成了一片*/ 
 			BUG_ON(!rq_mergeable(req));
 
 			if (!q->front_merge_fn(q, req, bio))
@@ -2949,11 +2962,13 @@ static int __make_request(request_queue_t *q, struct bio *bio)
 			req->ioprio = ioprio_best(req->ioprio, prio);
 			drive_stat_acct(req, nr_sectors, 0);
 			if (!attempt_front_merge(q, req))
+				/*试图再次前向合并*/ 
 				elv_merged_request(q, req);
 			goto out;
 
 		/* ELV_NO_MERGE: elevator says don't/can't merge. */
 		default:
+		//不能合并，需要新创一个request。
 			;
 	}
 
@@ -2962,6 +2977,7 @@ get_rq:
 	 * Grab a free request. This is might sleep but can not fail.
 	 * Returns with the queue unlocked.
 	 */
+	/*不能合并的情况,申请新的request结构,放入到队列中去*/ 
 	req = get_request_wait(q, rw, bio);
 
 	/*
@@ -2974,7 +2990,9 @@ get_rq:
 
 	spin_lock_irq(q->queue_lock);
 	if (elv_queue_empty(q))
+		/*空队列,拔出设备,暂时缓存request请求*/ 
 		blk_plug_device(q);
+	/*将请求加入到队列*/ 
 	add_request(q, req);
 out:
 	if (sync)
@@ -2982,6 +3000,13 @@ out:
 
 	spin_unlock_irq(q->queue_lock);
 	return 0;
+	/* 
+    块驱动尽量的想收集多个bio一起出来，所以映入了plug和unplug这两个概念 
+    blk_plug_device 塞住设备plug，并设置一个定时器，等待一段时间再unplug设备 
+    如果发送的请求太多，也会触发实际的写入操作， elv_insert函数中 
+            if (nrq >= q->unplug_thresh) 
+            __generic_unplug_device(q); 
+	*/ 
 
 end_io:
 	bio_endio(bio, nr_sectors << 9, err);

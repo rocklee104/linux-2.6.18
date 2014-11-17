@@ -2946,6 +2946,7 @@ int submit_bh(int rw, struct buffer_head * bh)
 	bio_get(bio);
 	submit_bio(rw, bio);
 
+	//rocklee_flag = 0; 
 	if (bio_flagged(bio, BIO_EOPNOTSUPP))
 		ret = -EOPNOTSUPP;
 
