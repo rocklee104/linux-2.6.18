@@ -36,11 +36,11 @@ struct namespace;
 #define MNT_PNODE_MASK	0x3000	/* propogation flag mask */
 
 struct vfsmount {
-	//用于将相同hash值的vfsmount组成链表
+	//用于将相同hash值的vfsmount组成链表,hash头是mount_hashtable
 	struct list_head mnt_hash;
 	//挂载点所在的父文件系统
 	struct vfsmount *mnt_parent;	/* fs we are mounted on */
-	//挂载点在父文件系统中的dentry
+	//挂载点在父文件系统中的dentry 
 	struct dentry *mnt_mountpoint;	/* dentry of mountpoint */
 	//当前文件系统根目录的dentry
 	struct dentry *mnt_root;	/* root of the mounted tree */
