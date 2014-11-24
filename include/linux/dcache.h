@@ -127,7 +127,13 @@ struct dentry {
 #ifdef CONFIG_PROFILING
 	struct dcookie_struct *d_cookie; /* cookie, if any */
 #endif
-	//如果当前目录有文件系统挂载上,加1, other wise 0,用来记录当前目录上挂了几个文件系统
+	/* 
+	 * 如果当前目录有文件系统挂载上,加1, other wise 0,用来记录当前目录上挂了几个文件系统.
+	 * 一般情况下一个目录挂载了文件系统后,这个目录的dentry就是挂载上的那个那文件系统根目录的dentry.
+	 * d_mounted就不会有增加,但是一个目录如果用mount --bind xxx xxx这种方式自己挂在自己上面,
+     * d_mounted就会增加. 还有一种情况是:在完成clone一个vfsmount后,这个vfsmount将其mnt point
+     * 设置成这个dentry的时候, d_mounted也会增加
+	*/
 	int d_mounted;
 	//如果文件名很短,则存储在d_iname中,加速访问
 	unsigned char d_iname[DNAME_INLINE_LEN_MIN];	/* small names */

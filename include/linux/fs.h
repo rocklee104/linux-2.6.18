@@ -124,7 +124,7 @@ extern int dir_notify_enable;
 #define MS_NODIRATIME	2048	/* Do not update directory access times */
 #define MS_BIND		4096
 #define MS_MOVE		8192
-//0x4000第15位为1
+//recursive,递归
 #define MS_REC		16384
 //0x8000第16位为1
 #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.

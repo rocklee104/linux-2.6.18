@@ -917,7 +917,7 @@ out:
 
 EXPORT_SYMBOL_GPL(vfs_kern_mount);
 
-//fstype是fs的名称,name是设备名称
+//fstype是fs的名称,name是设备名称,返回的vfsmnt的mount point是文件系统的根目录
 struct vfsmount *
 do_kern_mount(const char *fstype, int flags, const char *name, void *data)
 {

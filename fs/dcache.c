@@ -1671,10 +1671,12 @@ int is_subdir(struct dentry * new_dentry, struct dentry * old_dentry)
 			if (new_dentry != old_dentry) {
 				struct dentry * parent = new_dentry->d_parent;
 				if (parent == new_dentry)
+					//new_dentry的父目录等于自说明已经追溯到了根目录 
 					break;
 				new_dentry = parent;
 				continue;
 			}
+		    //如果new_dentry向上追溯使new_dentry == old_dentry,说明new_dentry是old_dentry的子目录
 			result = 1;
 			break;
 		}

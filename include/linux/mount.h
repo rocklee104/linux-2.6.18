@@ -46,7 +46,7 @@ struct vfsmount {
 	struct dentry *mnt_root;	/* root of the mounted tree */
 	//指向超级块的指针
 	struct super_block *mnt_sb;	/* pointer to superblock */
-	//子文件系统的链表头, 成员是子文件系统的mnt_child
+	//用于连接子文件系统的链表头, 成员是子文件系统的mnt_child
 	struct list_head mnt_mounts;	/* list of children, anchored here */
 	//链表头是父vfsmount的mnt_mounts的成员
 	struct list_head mnt_child;	/* and going through their mnt_child */
