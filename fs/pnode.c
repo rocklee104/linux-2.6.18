@@ -106,7 +106,12 @@ void change_mnt_propagation(struct vfsmount *mnt, int type)
  * @m: the mount seen last
  * @origin: the original mount from where the tree walk initiated
  */
- //遍历整个以origin为最终master的mount tree(mount tree 以slave为节点),以及origin peer的mount tree
+/* 
+ * origin中的挂载能够传播的是origin的peer,origin的slave及slave的n级slave.
+ * peer的slave及peer的n级slave.
+ * 
+ * NOTE:origin的slave的peer一定也是origin的slave
+ */
 static struct vfsmount *propagation_next(struct vfsmount *m,
 					 struct vfsmount *origin)
 {
@@ -124,11 +129,12 @@ static struct vfsmount *propagation_next(struct vfsmount *m,
              * Note:以下m表示最开始调用propagation_next时传入的m,m'表示最后进入这个if语句中的m.
              * 
              * 如果m在slave tree中一直向master追溯,最终找到一个节点m'的master和origin的master
-             * 指针指向同一个master,这时候m'和origin可能存在两种关系:
+             * 指针指向同一个master,这时候m'和origin可能存在三种关系:
              *   1.m'->master和origin的master都为NULL,m'和origin是peer的关系
              *   2.m'->master和origin的master不为NULL,m'和origin都是其master的slave
+             *   3.m'和origin都是master的slave并m'和origin同为peer
             */
-            //如果是上述的第1种关系m的peer指向其peer, 如果是第2种,peer指向自己
+            //如果是上述的第1,3种关系m的peer指向其peer, 如果是第2种,peer指向自己
 			next = next_peer(m);
             //如果next == origin表示mnt_share链表是空的,返回NULL,否则返回mnt_share链表中的下个成员
 			return ((next == origin) ? NULL : next);
@@ -166,7 +172,7 @@ static struct vfsmount *get_source(struct vfsmount *dest,
 		*type |= CL_MAKE_SHARED;
 
 	while (last_dest != dest->mnt_master) {
-        //如果dest是last_dest的peer
+        //如果dest是last_dest的peer 
 		p_last_dest = last_dest;
 		p_last_src = last_src;
 		last_dest = last_dest->mnt_master;
