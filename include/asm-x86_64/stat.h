@@ -4,6 +4,7 @@
 #define STAT_HAVE_NSEC 1
 
 struct stat {
+	//文件所在设备的设备号
 	unsigned long	st_dev;
 	unsigned long	st_ino;
 	unsigned long	st_nlink;
