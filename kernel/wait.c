@@ -225,6 +225,7 @@ __wait_on_bit_lock(wait_queue_head_t *wq, struct wait_bit_queue *q,
 				break;
 		}
 	} while (test_and_set_bit(q->key.bit_nr, q->key.flags));
+    //如果q->key.flags中第q->key.bit_nr位没有被置位,置位这个bit,然后退出
 	finish_wait(wq, &q->wait);
 	return ret;
 }
@@ -244,6 +245,7 @@ void fastcall __wake_up_bit(wait_queue_head_t *wq, void *word, int bit)
 {
 	struct wait_bit_key key = __WAIT_BIT_KEY_INITIALIZER(word, bit);
 	if (waitqueue_active(wq))
+		//队列中有成员时才调用下面的__wake_up,一次只唤醒一个成员
 		__wake_up(wq, TASK_INTERRUPTIBLE|TASK_UNINTERRUPTIBLE, 1, &key);
 }
 EXPORT_SYMBOL(__wake_up_bit);

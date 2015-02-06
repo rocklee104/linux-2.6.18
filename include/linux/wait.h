@@ -51,7 +51,9 @@ struct wait_bit_key {
 };
 
 struct wait_bit_queue {
+    //等待的key值
 	struct wait_bit_key key;
+    //等待队列的node
 	wait_queue_t wait;
 };
 
