@@ -894,6 +894,11 @@ radix_tree_node_ctor(void *node, kmem_cache_t *cachep, unsigned long flags)
 static __init unsigned long __maxindex(unsigned int height)
 {
 	unsigned int tmp = height * RADIX_TREE_MAP_SHIFT;
+	/*
+	 * 下面的语句有BUG,如果(RADIX_TREE_INDEX_BITS - tmp - 1) < 0或者
+	 * 位移超过了long的bit边界,在C语言中,这就是一个未定义的状态.kernel
+	 * git 430d275a399175c7修复了此问题.
+	 */
 	unsigned long index = (~0UL >> (RADIX_TREE_INDEX_BITS - tmp - 1)) >> 1;
 
 	//index是不能大于一个机器字长的
