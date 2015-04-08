@@ -1,4 +1,4 @@
-/*
+ï»¿/*
  * Generic waiting primitives.
  *
  * (C) 2004 William Irwin, Oracle
@@ -18,12 +18,12 @@ void init_waitqueue_head(wait_queue_head_t *q)
 
 EXPORT_SYMBOL(init_waitqueue_head);
 
-//½«·Ç»¥³â½ø³ÌÌí¼Óµ½µÈ´ı¶ÓÁĞµÄÇ°²¿
+//å°†éäº’æ–¥è¿›ç¨‹æ·»åŠ åˆ°ç­‰å¾…é˜Ÿåˆ—çš„å‰éƒ¨
 void fastcall add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	unsigned long flags;
 
-	//Çå³ıWQ_FLAG_EXCLUSIVE±êÖ¾,½ø³Ì»á±»·Ç¶ÀÕ¼»½ĞÑ
+	//æ¸…é™¤WQ_FLAG_EXCLUSIVEæ ‡å¿—,è¿›ç¨‹ä¼šè¢«éç‹¬å å”¤é†’
 	wait->flags &= ~WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&q->lock, flags);
 	__add_wait_queue(q, wait);
@@ -31,7 +31,7 @@ void fastcall add_wait_queue(wait_queue_head_t *q, wait_queue_t *wait)
 }
 EXPORT_SYMBOL(add_wait_queue);
 
-//½«»¥³â½ø³ÌÌí¼Óµ½µÈ´ı¶ÓÁĞµÄÄ©Î²
+//å°†äº’æ–¥è¿›ç¨‹æ·»åŠ åˆ°ç­‰å¾…é˜Ÿåˆ—çš„æœ«å°¾
 void fastcall add_wait_queue_exclusive(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	unsigned long flags;
@@ -74,14 +74,14 @@ prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
 	wait->flags &= ~WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&q->lock, flags);
 	if (list_empty(&wait->task_list))
-        //¼ÓÈëµÈ´ı¶ÓÁĞ
+        //åŠ å…¥ç­‰å¾…é˜Ÿåˆ—
 		__add_wait_queue(q, wait);
 	/*
 	 * don't alter the task state if this is just going to
 	 * queue an async wait queue callback
 	 */
 	if (is_sync_wait(wait))
-        //ÉèÖÃ½ø³Ì×´Ì¬
+        //è®¾ç½®è¿›ç¨‹çŠ¶æ€
 		set_current_state(state);
 	spin_unlock_irqrestore(&q->lock, flags);
 }
@@ -126,7 +126,7 @@ void fastcall finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 	 */
 	if (!list_empty_careful(&wait->task_list)) {
 		spin_lock_irqsave(&q->lock, flags);
-		//½«wait´ÓµÈ´ı¶ÓÁĞÖĞÉ¾³ı
+		//å°†waitä»ç­‰å¾…é˜Ÿåˆ—ä¸­åˆ é™¤
 		list_del_init(&wait->task_list);
 		spin_unlock_irqrestore(&q->lock, flags);
 	}
@@ -152,7 +152,7 @@ int wake_bit_function(wait_queue_t *wait, unsigned mode, int sync, void *arg)
 	if (wait_bit->key.flags != key->flags ||
 			wait_bit->key.bit_nr != key->bit_nr ||
 			test_bit(key->bit_nr, key->flags))
-        //²»ÊÇÒªÕÒµÄwait_bit,»òÕßflagµÄbit_nrÈÔÈ»±»ÖÃÎ»
+        //ä¸æ˜¯è¦æ‰¾çš„wait_bit,æˆ–è€…flagçš„bit_nrä»ç„¶è¢«ç½®ä½
 		return 0;
 	else
 		return autoremove_wake_function(wait, mode, sync, key);
@@ -171,21 +171,21 @@ __wait_on_bit(wait_queue_head_t *wq, struct wait_bit_queue *q,
 	int ret = 0;
 
 	do {
-        //½«q->wait¼ÓÈëµÈ´ı¶ÓÁĞ
+        //å°†q->waitåŠ å…¥ç­‰å¾…é˜Ÿåˆ—
 		prepare_to_wait(wq, &q->wait, mode);
 		if (test_bit(q->key.bit_nr, q->key.flags))
             /*
-             * Èç¹ûµÈ´ı±»Çå³ıµÄbitÈÔÈ»±»ÖÃÎ»,¾ÍÖ´ĞĞaction,¶ÔÓÚwait_on_inodeÀ´Ëµ,
-             * Õâ¸öaction¾ÍÊÇschedule,Ò²¾ÍÊÇËµÈç¹ûbit_nrÎ»Ã»ÓĞ±»Çå³ı,¾ÍÒ»Ö±µÈ´ı.
+             * å¦‚æœç­‰å¾…è¢«æ¸…é™¤çš„bitä»ç„¶è¢«ç½®ä½,å°±æ‰§è¡Œaction,å¯¹äºwait_on_inodeæ¥è¯´,
+             * è¿™ä¸ªactionå°±æ˜¯schedule,ä¹Ÿå°±æ˜¯è¯´å¦‚æœbit_nrä½æ²¡æœ‰è¢«æ¸…é™¤,å°±ä¸€ç›´ç­‰å¾….
             */
 			ret = (*action)(q->key.flags);
         /*
-         * µ±bit_nrÃ»ÓĞ±»Çå³ıÊ±,¾ÍÒ»Ö±Ñ­»·,ÕâÊµ¼ÊÉÏÊÇÔÚ¶à¸ö½ø³ÌµÈ´ıµÄÊ±ºòÊ¹ÓÃµÄ,
-         * µ±Ìõ¼ş³ÉÁ¢Ê±µÈ´ı¶ÓÁĞÉÏµÄËùÓĞ½ø³Ì¶¼±»»½ĞÑ(thundering herd),
-         * µ«Ö»ÄÜÓĞÒ»¸ö½ø³Ì»ñÈ¡µ½Êı¾İ,ÆäËûµÄ½ø³Ì¼ÌĞøĞİÃß
+         * å½“bit_nræ²¡æœ‰è¢«æ¸…é™¤æ—¶,å°±ä¸€ç›´å¾ªç¯,è¿™å®é™…ä¸Šæ˜¯åœ¨å¤šä¸ªè¿›ç¨‹ç­‰å¾…çš„æ—¶å€™ä½¿ç”¨çš„,
+         * å½“æ¡ä»¶æˆç«‹æ—¶ç­‰å¾…é˜Ÿåˆ—ä¸Šçš„æ‰€æœ‰è¿›ç¨‹éƒ½è¢«å”¤é†’(thundering herd),
+         * ä½†åªèƒ½æœ‰ä¸€ä¸ªè¿›ç¨‹è·å–åˆ°æ•°æ®,å…¶ä»–çš„è¿›ç¨‹ç»§ç»­ä¼‘çœ 
         */
 	} while (test_bit(q->key.bit_nr, q->key.flags) && !ret);
-    //ÒÆ³ıµÈ´ı¶ÓÁĞ
+    //ç§»é™¤ç­‰å¾…é˜Ÿåˆ—
 	finish_wait(wq, &q->wait);
 	return ret;
 }
@@ -194,7 +194,7 @@ EXPORT_SYMBOL(__wait_on_bit);
 int __sched fastcall out_of_line_wait_on_bit(void *word, int bit,
 					int (*action)(void *), unsigned mode)
 {
-    //ÔÚzoneÖĞ»ñÈ¡µÈ´ı¶ÓÁĞÍ·
+    //åœ¨zoneä¸­è·å–ç­‰å¾…é˜Ÿåˆ—å¤´
 	wait_queue_head_t *wq = bit_waitqueue(word, bit);
 	DEFINE_WAIT_BIT(wait, word, bit);
 
@@ -202,16 +202,16 @@ int __sched fastcall out_of_line_wait_on_bit(void *word, int bit,
 }
 EXPORT_SYMBOL(out_of_line_wait_on_bit);
 
-int __sched fastcall
 /*
- *1.½«q¼ÓÈëµÈ´ı¶ÓÁĞwq 
- *2.ÅĞ¶Ïq->key.flagsÖĞµÚq->key.bit_nrÎ»ÊÇ·ñ±»ÖÃÎ»£º 
- *  a.Èç¹û±»ÖÃÎ»¾ÍÖ´ĞĞaction(Ò»°ãÀàËÆÓÚscheduleµÄĞİÃß),µÈµ½ÆäËû½ø³Ì»½ĞÑµÈ´ı¶ÓÁĞµÄÊ±ºò£¬
- *    ¾Íµ÷ÓÃtest_and_set_bit¿´ÊÇ·ñÖÃÎ»£¬Èç¹û»¹ÊÇÖÃÎ»£¬·µ»Ø1,Ñ­»·¼ÌĞø¡£
- *  b.Èç¹ûÃ»ÓĞ±»ÖÃÎ»£¬¾Í²»Ö´ĞĞaction,µ÷ÓÃtest_and_set_bitÖÃÎ»¡£
- *    ÓÉÓÚtest_bit²âÊÔ¹ıÃ»ÓĞÃ»ÓĞÖÃÎ»£¬test_and_set_bit½«»á·µ»Ø0,Ñ­»·ÍË³ö¡£
- *3.½«q->waitÒÆ³ıµÈ´ı¶ÓÁĞ
+ *1.å°†qåŠ å…¥ç­‰å¾…é˜Ÿåˆ—wq 
+ *2.åˆ¤æ–­q->key.flagsä¸­ç¬¬q->key.bit_nrä½æ˜¯å¦è¢«ç½®ä½ï¼š 
+ *  a.å¦‚æœè¢«ç½®ä½å°±æ‰§è¡Œaction(ä¸€èˆ¬ç±»ä¼¼äºscheduleçš„ä¼‘çœ ),ç­‰åˆ°å…¶ä»–è¿›ç¨‹å”¤é†’ç­‰å¾…é˜Ÿåˆ—çš„æ—¶å€™ï¼Œ
+ *    å°±è°ƒç”¨test_and_set_bitçœ‹æ˜¯å¦ç½®ä½ï¼Œå¦‚æœè¿˜æ˜¯ç½®ä½ï¼Œè¿”å›1,å¾ªç¯ç»§ç»­ã€‚
+ *  b.å¦‚æœæ²¡æœ‰è¢«ç½®ä½ï¼Œå°±ä¸æ‰§è¡Œaction,è°ƒç”¨test_and_set_bitç½®ä½ã€‚
+ *    ç”±äºtest_bitæµ‹è¯•è¿‡æ²¡æœ‰æ²¡æœ‰ç½®ä½ï¼Œtest_and_set_bitå°†ä¼šè¿”å›0,å¾ªç¯é€€å‡ºã€‚
+ *3.å°†q->waitç§»é™¤ç­‰å¾…é˜Ÿåˆ—
 */
+int __sched fastcall
 __wait_on_bit_lock(wait_queue_head_t *wq, struct wait_bit_queue *q,
 			int (*action)(void *), unsigned mode)
 {
@@ -220,12 +220,12 @@ __wait_on_bit_lock(wait_queue_head_t *wq, struct wait_bit_queue *q,
 	do {
 		prepare_to_wait_exclusive(wq, &q->wait, mode);	
 		if (test_bit(q->key.bit_nr, q->key.flags)) {
-			//Èç¹ûq->key.flagsÖĞµÚq->key.bit_nrÎ»±»ÖÃÎ»
+			//å¦‚æœq->key.flagsä¸­ç¬¬q->key.bit_nrä½è¢«ç½®ä½
 			if ((ret = (*action)(q->key.flags)))
 				break;
 		}
 	} while (test_and_set_bit(q->key.bit_nr, q->key.flags));
-    //Èç¹ûq->key.flagsÖĞµÚq->key.bit_nrÎ»Ã»ÓĞ±»ÖÃÎ»,ÖÃÎ»Õâ¸öbit,È»ºóÍË³ö
+    //å¦‚æœq->key.flagsä¸­ç¬¬q->key.bit_nrä½æ²¡æœ‰è¢«ç½®ä½,ç½®ä½è¿™ä¸ªbit,ç„¶åé€€å‡º
 	finish_wait(wq, &q->wait);
 	return ret;
 }
@@ -245,7 +245,7 @@ void fastcall __wake_up_bit(wait_queue_head_t *wq, void *word, int bit)
 {
 	struct wait_bit_key key = __WAIT_BIT_KEY_INITIALIZER(word, bit);
 	if (waitqueue_active(wq))
-		//¶ÓÁĞÖĞÓĞ³ÉÔ±Ê±²Åµ÷ÓÃÏÂÃæµÄ__wake_up,Ò»´ÎÖ»»½ĞÑÒ»¸ö³ÉÔ±
+		//é˜Ÿåˆ—ä¸­æœ‰æˆå‘˜æ—¶æ‰è°ƒç”¨ä¸‹é¢çš„__wake_up,ä¸€æ¬¡åªå”¤é†’ä¸€ä¸ªæˆå‘˜
 		__wake_up(wq, TASK_INTERRUPTIBLE|TASK_UNINTERRUPTIBLE, 1, &key);
 }
 EXPORT_SYMBOL(__wake_up_bit);
