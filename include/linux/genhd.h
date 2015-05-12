@@ -1,4 +1,4 @@
-ï»¿#ifndef _LINUX_GENHD_H
+#ifndef _LINUX_GENHD_H
 #define _LINUX_GENHD_H
 
 /*
@@ -74,25 +74,25 @@ struct partition {
 	__le32 nr_sects;		/* nr of sectors in partition */
 } __attribute__((packed));
 
-//ä¸€ä¸ªåˆ†åŒºçš„æ•°æ®ç»“æž„
+//Ò»¸ö·ÖÇøµÄÊý¾Ý½á¹¹
 struct hd_struct {
-	//è¯¥åˆ†åŒºçš„èµ·å§‹æ‰‡åŒº
+	//¸Ã·ÖÇøµÄÆðÊ¼ÉÈÇø
 	sector_t start_sect;
-	//è¯¥åˆ†åŒºçš„æ‰‡åŒºæ•°é‡
+	//¸Ã·ÖÇøµÄÉÈÇøÊýÁ¿
 	sector_t nr_sects;
 	struct kobject kobj;
 	struct kobject *holder_dir;
-	//iosè¡¨ç¤ºè¯»/å†™æ“ä½œçš„æ¬¡æ•°,sectorsè¡¨ç¤ºè¯»/å†™çš„æ‰‡åŒºæ•°
+	//ios±íÊ¾¶Á/Ð´²Ù×÷µÄ´ÎÊý,sectors±íÊ¾¶Á/Ð´µÄÉÈÇøÊý
 	unsigned ios[2], sectors[2];	/* READs and WRITEs */
-	//policyä¸º1è¡¨ç¤ºåˆ†åŒºåªè¯»,partnoè¡¨ç¤ºæ‰‡åŒºç¼–å·
+	//policyÎª1±íÊ¾·ÖÇøÖ»¶Á,partno±íÊ¾ÉÈÇø±àºÅ
 	int policy, partno;
 };
 
-//å¦‚è½¯ç›˜æˆ–å…‰ç›˜è¿™æ ·å¯ç§»åŠ¨çš„ç£ç›˜
+//ÈçÈíÅÌ»ò¹âÅÌÕâÑù¿ÉÒÆ¶¯µÄ´ÅÅÌ
 #define GENHD_FL_REMOVABLE			1
 #define GENHD_FL_DRIVERFS			2
 #define GENHD_FL_CD				8
-//ç£ç›˜å°†è¢«åˆå§‹åŒ–å¹¶å¯ä»¥ä½¿ç”¨
+//´ÅÅÌ½«±»³õÊ¼»¯²¢¿ÉÒÔÊ¹ÓÃ
 #define GENHD_FL_UP				16
 #define GENHD_FL_SUPPRESS_PARTITION_INFO	32
 
@@ -106,46 +106,46 @@ struct disk_stats {
 };
 	
 struct gendisk {
-    //ç£ç›˜ä¸»è®¾å¤‡å·
+    //´ÅÅÌÖ÷Éè±¸ºÅ
 	int major;			/* major number of driver */
-	//ä¸Žç£ç›˜å…³è”çš„ç¬¬ä¸€ä¸ªæ¬¡è®¾å¤‡å·, å¦‚sdaçš„æ¬¡è®¾å¤‡å·
+	//Óë´ÅÅÌ¹ØÁªµÄµÚÒ»¸ö´ÎÉè±¸ºÅ, ÈçsdaµÄ´ÎÉè±¸ºÅ
 	int first_minor;
-    //ä¸»æ¬¡åˆ†åŒºçš„æ€»ä¸ªæ•°,å¦‚æžœä¸º1,è¡¨ç¤ºåªæœ‰ä¸»åˆ†åŒº,æ— æ³•åˆ†é…æ¬¡åˆ†åŒºï¼Œ ä¾‹/dev/sda 8,  0, 
-    //å…¶ä¸»è®¾å¤‡å·æ˜¯8ï¼Œæ¬¡è®¾å¤‡å·æ˜¯0ï¼Œfirst_minor=0ï¼Œ minors=16
+    //Ö÷´Î·ÖÇøµÄ×Ü¸öÊý,Èç¹ûÎª1,±íÊ¾Ö»ÓÐÖ÷·ÖÇø,ÎÞ·¨·ÖÅä´Î·ÖÇø£¬ Àý/dev/sda 8,  0, 
+    //ÆäÖ÷Éè±¸ºÅÊÇ8£¬´ÎÉè±¸ºÅÊÇ0£¬first_minor=0£¬ minors=16
 	int minors;                     /* maximum number of minors, =1 for
                                          * disks that can't be partitioned. */
 	char disk_name[32];		/* name of major driver */
-	//æ¬¡åˆ†åŒºçš„æ•°ç»„, æ¯ä¸ªåˆ†åŒºå¯¹åº”ä¸€ä¸ªæ•°ç»„é¡¹									 
+	//´Î·ÖÇøµÄÊý×é, Ã¿¸ö·ÖÇø¶ÔÓ¦Ò»¸öÊý×éÏî									 
 	struct hd_struct **part;	/* [indexed by minor] */
-	//if part_uevent_suppress is positive, æ£€æµ‹åˆ°è®¾å¤‡çš„åˆ†åŒºæ”¹å˜æ—¶
-	//å°±ä¸ä¼šå‘ç”¨æˆ·ç©ºé—´å‘é€çƒ­æ’æ‹”äº‹ä»¶.
+	//if part_uevent_suppress is positive, ¼ì²âµ½Éè±¸µÄ·ÖÇø¸Ä±äÊ±
+	//¾Í²»»áÏòÓÃ»§¿Õ¼ä·¢ËÍÈÈ²å°ÎÊÂ¼þ.
 	int part_uevent_suppress;
 	struct block_device_operations *fops;
-    //æŒ‡å‘ç£ç›˜è¯·æ±‚é˜Ÿåˆ—çš„æŒ‡é’ˆ
+    //Ö¸Ïò´ÅÅÌÇëÇó¶ÓÁÐµÄÖ¸Õë
 	struct request_queue *queue;
 	void *private_data;
-	//ç£ç›˜å®¹é‡,å•ä½æ˜¯æ‰‡åŒº
+	//´ÅÅÌÈÝÁ¿,µ¥Î»ÊÇÉÈÇø
 	sector_t capacity;
-    //ç£ç›˜ç±»åž‹çš„æ ‡å¿—,GENHD_FL_UPè¡¨ç¤ºç£ç›˜åˆå§‹åŒ–å¹¶ä¸”å¯ä»¥ä½¿ç”¨,GENHD_FL_REMOVABLE:å¦‚æžœæ˜¯å¯ç§»åŠ¨ç£ç›˜å°±è¦è®¾ç½®è¯¥æ ‡å¿—
+    //´ÅÅÌÀàÐÍµÄ±êÖ¾,GENHD_FL_UP±íÊ¾´ÅÅÌ³õÊ¼»¯²¢ÇÒ¿ÉÒÔÊ¹ÓÃ,GENHD_FL_REMOVABLE:Èç¹ûÊÇ¿ÉÒÆ¶¯´ÅÅÌ¾ÍÒªÉèÖÃ¸Ã±êÖ¾
 	int flags;
-	//æ ‡è¯†è¯¥ç£ç›˜æ‰€å±žçš„ç¡¬ä»¶è®¾å¤‡,æŒ‡é’ˆæŒ‡å‘é©±åŠ¨æ¨¡åž‹çš„ä¸€ä¸ªå¯¹è±¡
+	//±êÊ¶¸Ã´ÅÅÌËùÊôµÄÓ²¼þÉè±¸,Ö¸ÕëÖ¸ÏòÇý¶¯Ä£ÐÍµÄÒ»¸ö¶ÔÏó
 	struct device *driverfs_dev;
 	struct kobject kobj;
 	struct kobject *holder_dir;
 	struct kobject *slave_dir;
-    //è¯¥æŒ‡é’ˆæŒ‡å‘è¿™ä¸ªæ•°æ®ç»“æž„è®°å½•ç£ç›˜ä¸­æ–­çš„å®šæ—¶,ç”±å†…æ ¸å†…ç½®çš„éšæœºæ•°å‘ç”Ÿå™¨ä½¿ç”¨
+    //¸ÃÖ¸ÕëÖ¸ÏòÕâ¸öÊý¾Ý½á¹¹¼ÇÂ¼´ÅÅÌÖÐ¶ÏµÄ¶¨Ê±,ÓÉÄÚºËÄÚÖÃµÄËæ»úÊý·¢ÉúÆ÷Ê¹ÓÃ
 	struct timer_rand_state *random;
-	//å¦‚æžœç£ç›˜æ˜¯åªè¯»çš„ï¼Œåˆ™ç½®ä¸º1ï¼ˆå†™æ“ä½œç¦æ­¢ï¼‰ï¼Œå¦åˆ™ä¸º0
+	//Èç¹û´ÅÅÌÊÇÖ»¶ÁµÄ£¬ÔòÖÃÎª1£¨Ð´²Ù×÷½ûÖ¹£©£¬·ñÔòÎª0
 	int policy;
 
-    //å†™å…¥ç£ç›˜çš„æ‰‡åŒºæ•°è®¡æ•°å™¨,ä»…ä¸ºraidä½¿ç”¨
+    //Ð´Èë´ÅÅÌµÄÉÈÇøÊý¼ÆÊýÆ÷,½öÎªraidÊ¹ÓÃ
 	atomic_t sync_io;		/* RAID */
-    //ç»Ÿè®¡ç£ç›˜é˜Ÿåˆ—ä½¿ç”¨æƒ…å†µçš„æ—¶é—´æˆ³
+    //Í³¼Æ´ÅÅÌ¶ÓÁÐÊ¹ÓÃÇé¿öµÄÊ±¼ä´Á
 	unsigned long stamp;
-    //æ­£åœ¨è¿›è¡Œçš„ioæ“ä½œæ•°
+    //ÕýÔÚ½øÐÐµÄio²Ù×÷Êý
 	int in_flight;
 #ifdef	CONFIG_SMP
-    //ç»Ÿè®¡æ¯ä¸ªcpuä½¿ç”¨ç£ç›˜çš„æƒ…å†µ
+    //Í³¼ÆÃ¿¸öcpuÊ¹ÓÃ´ÅÅÌµÄÇé¿ö
 	struct disk_stats *dkstats;
 #else
 	struct disk_stats dkstats;
@@ -434,7 +434,7 @@ extern void blk_register_region(dev_t dev, unsigned long range,
 			void *data);
 extern void blk_unregister_region(dev_t dev, unsigned long range);
 
-//é€šè¿‡struct gendiskå¯¹è±¡æ‰¾åˆ°inode,å†ä»Žinodeæ‰¾åˆ°struct block_deviceå¯¹è±¡
+//Í¨¹ýstruct gendisk¶ÔÏóÕÒµ½inode,ÔÙ´ÓinodeÕÒµ½struct block_device¶ÔÏó
 static inline struct block_device *bdget_disk(struct gendisk *disk, int index)
 {
 	return bdget(MKDEV(disk->major, disk->first_minor) + index);
