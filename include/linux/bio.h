@@ -1,4 +1,4 @@
-/*
+ï»¿/*
  * 2.5 block I/O model
  *
  * Copyright (C) 2001 Jens Axboe <axboe@suse.de>
@@ -55,11 +55,11 @@
  * was unsigned short, but we might as well be ready for > 64kB I/O pages
  */
 struct bio_vec {
-	//Ö¸Ïò¶ÎµÄÒ³¿òÖĞÒ³ÃèÊö·ûµÄÖ¸Õë
+	//æŒ‡å‘æ®µçš„é¡µæ¡†ä¸­é¡µæè¿°ç¬¦çš„æŒ‡é’ˆ
 	struct page	*bv_page;
-	//¶ÎµÄ×Ö½Ú³¤¶È
+	//æ®µçš„å­—èŠ‚é•¿åº¦
 	unsigned int	bv_len;
-	//Ò³¿òÖĞ¶ÎÊı¾İµÄÆ«ÒÆÁ¿
+	//é¡µæ¡†ä¸­æ®µæ•°æ®çš„åç§»é‡
 	unsigned int	bv_offset;
 };
 
@@ -73,35 +73,38 @@ typedef void (bio_destructor_t) (struct bio *);
  * stacking drivers)
  */
 struct bio {
-	//±¾´Î´«ÊäµÄÆğÊ¼ÉÈÇøºÅ
+	//æœ¬æ¬¡ä¼ è¾“çš„èµ·å§‹æ‰‡åŒºå·(512å­—èŠ‚çš„æ‰‡åŒº)
 	sector_t		bi_sector;
-	//Á´½Óµ½ÇëÇó¶ÓÁĞµÄÏÂÒ»¸öbio
+	//é“¾æ¥åˆ°è¯·æ±‚é˜Ÿåˆ—çš„ä¸‹ä¸€ä¸ªbio
 	struct bio		*bi_next;	/* request queue link */
 	struct block_device	*bi_bdev;
-	//bioµÄ×´Ì¬±êÖ¾,±ÈÈçBIO_UPTODATE
+	/* 
+	 * bioçš„çŠ¶æ€æ ‡å¿—,æ¯”å¦‚BIO_UPTODATE,å¦‚æœæ˜¯å†™è¯·æ±‚,æœ€ä½æœ‰æ•ˆä½å°†è¢«ç½®ä½.
+	 * åˆ¤æ–­è¯»å†™ä¸€èˆ¬ä½¿ç”¨bio_data_dir(bio),è€Œä¸æ˜¯ç›´æ¥æŸ¥çœ‹è¯¥æ ‡å¿—
+	 */
 	unsigned long		bi_flags;	/* status, command, etc */
-	//io²Ù×÷±êÖ¾,ÈçBIO_RW,µÍ16Î»ÊÇ¶ÁĞ´±êÖ¾,¸ß16Î»ÊÇÓÅÏÈ¼¶±êÖ¾ 
+	//ioæ“ä½œæ ‡å¿—,å¦‚BIO_RW,ä½16ä½æ˜¯è¯»å†™æ ‡å¿—,é«˜16ä½æ˜¯ä¼˜å…ˆçº§æ ‡å¿— 
 	unsigned long		bi_rw;		/* bottom bits READ/WRITE,
 						 * top bits priority
 						 */
 
-	//bio_vecÊı×éÖĞ¶ÎµÄÊıÄ¿
+	//bio_vecæ•°ç»„ä¸­æ®µçš„æ•°ç›®
 	unsigned short		bi_vcnt;	/* how many bio_vec's */
-    //bio_vecÊı×éÖĞ¶ÎµÄµ±Ç°Ë÷Òı
+    //bio_vecæ•°ç»„ä¸­æ®µçš„å½“å‰ç´¢å¼•
 	unsigned short		bi_idx;		/* current index into bvl_vec */
 
 	/* Number of segments in this BIO after
 	 * physical address coalescing is performed.
 	 */
-	//ºÏ²¢Ö®ºóbioÖĞÎïÀí¶ÎµÄÊıÄ¿
+	//åˆå¹¶ä¹‹åbioä¸­ç‰©ç†æ®µçš„æ•°ç›®
 	unsigned short		bi_phys_segments;
 
 	/* Number of segments after physical and DMA remapping
 	 * hardware coalescing is performed.
 	 */
-    //ºÏ²¢Ö®ºóbioÖĞÓ²¼ş¶ÎµÄÊıÄ¿
+    //åˆå¹¶ä¹‹åbioä¸­ç¡¬ä»¶æ‰€èƒ½æ“ä½œçš„æ®µçš„æ•°ç›®
 	unsigned short		bi_hw_segments;
-	//ĞèÒª´«ËÍµÄ×Ö½ÚÊı
+	//éœ€è¦ä¼ é€çš„å­—èŠ‚æ•°,é€šå¸¸ä½¿ç”¨bio_sectors(bio)å®è·å–æ¯ä¸ªæ‰‡åŒºçš„å¤§å°
 	unsigned int		bi_size;	/* residual I/O count */
 
 	/*
@@ -109,21 +112,21 @@ struct bio {
 	 * sizes of the first and last virtually mergeable segments
 	 * in this bio
 	 */
-	//Ó²¼ş¶ÎºÏ²¢Ëã·¨Ê¹ÓÃ
+	//ç¡¬ä»¶æ®µåˆå¹¶ç®—æ³•ä½¿ç”¨
 	unsigned int		bi_hw_front_size;
-    //Ó²¼ş¶ÎºÏ²¢Ëã·¨Ê¹ÓÃ
+    //ç¡¬ä»¶æ®µåˆå¹¶ç®—æ³•ä½¿ç”¨
 	unsigned int		bi_hw_back_size;
-	//bioµÄbio_vecÊı×éÖĞÔÊĞíµÄ×î´ó¶ÎÊı
+	//bioçš„bio_vecæ•°ç»„ä¸­å…è®¸çš„æœ€å¤§æ®µæ•°
 	unsigned int		bi_max_vecs;	/* max bvl_vecs we can hold */
-	//Ö¸ÏòbioµÄbio_vecÊı×éÖĞµÄ¶ÎµÄÖ¸Õë
+	//æŒ‡å‘bioçš„bio_vecæ•°ç»„ä¸­çš„æ®µçš„æŒ‡é’ˆ
 	struct bio_vec		*bi_io_vec;	/* the actual vec list */
-	//bioµÄio²Ù×÷½áÊøÊ±µ÷ÓÃµÄ·½·¨£¬±ÈÈç¶ÁÈ¡´ÅÅÌÊı¾İ£¬ÔÚdma½«Êı¾İ¿½±´µ½Ö¸¶¨pageºó¾Í»áµ÷ÓÃÕâ¸ö»Øµ÷º¯Êı
+	//bioçš„ioæ“ä½œç»“æŸæ—¶è°ƒç”¨çš„æ–¹æ³•ï¼Œæ¯”å¦‚è¯»å–ç£ç›˜æ•°æ®ï¼Œåœ¨dmaå°†æ•°æ®æ‹·è´åˆ°æŒ‡å®špageåå°±ä¼šè°ƒç”¨è¿™ä¸ªå›è°ƒå‡½æ•°
 	bio_end_io_t		*bi_end_io;
-	//bioµÄÒıÓÃ¼ÆÊıÆ÷
+	//bioçš„å¼•ç”¨è®¡æ•°å™¨
 	atomic_t		bi_cnt;		/* pin count */
-	//Í¨ÓÃ¿é²ãºÍ¿éÉè±¸Çı¶¯³ÌĞòµÄioÍê³É·½·¨Ê¹ÓÃµÄÖ¸Õë
+	//é€šç”¨å—å±‚å’Œå—è®¾å¤‡é©±åŠ¨ç¨‹åºçš„ioå®Œæˆæ–¹æ³•ä½¿ç”¨çš„æŒ‡é’ˆ
 	void			*bi_private;
-	//ÊÍ·ÅbioÊ±µ÷ÓÃµÄÎö¹¹·½·¨
+	//é‡Šæ”¾bioæ—¶è°ƒç”¨çš„ææ„æ–¹æ³•
 	bio_destructor_t	*bi_destructor;	/* destructor */
 };
 
