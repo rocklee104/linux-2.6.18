@@ -71,15 +71,21 @@ int inotify_max_queued_events __read_mostly;
  * This structure is protected by the mutex 'mutex'.
  */
 struct inotify_device {
+	//等待队列,被 read 调用阻塞的进程将挂在该等待队列上
 	wait_queue_head_t 	wq;		/* wait queue for i/o */
 	struct mutex		ev_mutex;	/* protects event queue */
 	struct mutex		up_mutex;	/* synchronizes watch updates */
+	//事件链表,inotify实例监视的所有事件在发生后都将插入到这个链表
 	struct list_head 	events;		/* list of queued events */
 	atomic_t		count;		/* reference count */
+	//描述创建该inotify实例的用户
 	struct user_struct	*user;		/* user who opened this dev */
 	struct inotify_handle	*ih;		/* inotify handle */
+	//该inotify实例的事件队列的字节数
 	unsigned int		queue_size;	/* size of the queue (bytes) */
+	//events链表的事件数
 	unsigned int		event_count;	/* number of pending events */
+	//最大允许的事件数
 	unsigned int		max_events;	/* maximum number of events */
 };
 
@@ -368,8 +374,10 @@ static int create_watch(struct inotify_device *dev, struct inode *inode,
 
 	if (atomic_read(&dev->user->inotify_watches) >=
 			inotify_max_user_watches)
+			//确保每有超过每个用户的watch上限
 		return -ENOSPC;
 
+	//分配一个watch
 	watch = kmem_cache_alloc(watch_cachep, GFP_KERNEL);
 	if (unlikely(!watch))
 		return -ENOMEM;
@@ -518,6 +526,7 @@ static long inotify_ioctl(struct file *file, unsigned int cmd,
 	return ret;
 }
 
+//没有open函数
 static const struct file_operations inotify_fops = {
 	.poll           = inotify_poll,
 	.read           = inotify_read,
@@ -539,10 +548,12 @@ asmlinkage long sys_inotify_init(void)
 	struct file *filp;
 	int fd, ret;
 
+	//获取空闲的文件描述符
 	fd = get_unused_fd();
 	if (fd < 0)
 		return fd;
 
+	//获取一个未使用的file指针
 	filp = get_empty_filp();
 	if (!filp) {
 		ret = -ENFILE;
@@ -550,6 +561,7 @@ asmlinkage long sys_inotify_init(void)
 	}
 
 	user = get_uid(current->user);
+	//确保当前用户监视文件的数量没有超过系统上限
 	if (unlikely(atomic_read(&user->inotify_devs) >=
 			inotify_max_user_instances)) {
 		ret = -EMFILE;
@@ -562,6 +574,7 @@ asmlinkage long sys_inotify_init(void)
 		goto out_free_uid;
 	}
 
+	//获取初始化后的handler
 	ih = inotify_init(&inotify_user_ops);
 	if (unlikely(IS_ERR(ih))) {
 		ret = PTR_ERR(ih);
@@ -573,8 +586,10 @@ asmlinkage long sys_inotify_init(void)
 	filp->f_vfsmnt = mntget(inotify_mnt);
 	filp->f_dentry = dget(inotify_mnt->mnt_root);
 	filp->f_mapping = filp->f_dentry->d_inode->i_mapping;
+	//只读
 	filp->f_mode = FMODE_READ;
 	filp->f_flags = O_RDONLY;
+	//private_data中保存struct inotify_device
 	filp->private_data = dev;
 
 	INIT_LIST_HEAD(&dev->events);
@@ -611,6 +626,7 @@ asmlinkage long sys_inotify_add_watch(int fd, const char __user *path, u32 mask)
 	int ret, fput_needed;
 	unsigned flags = 0;
 
+	//通过fd在当前进程的fdtable中获取file指针
 	filp = fget_light(fd, &fput_needed);
 	if (unlikely(!filp))
 		return -EBADF;
@@ -622,8 +638,10 @@ asmlinkage long sys_inotify_add_watch(int fd, const char __user *path, u32 mask)
 	}
 
 	if (!(mask & IN_DONT_FOLLOW))
+		//跟踪符号链接
 		flags |= LOOKUP_FOLLOW;
 	if (mask & IN_ONLYDIR)
+		//只跟踪目录
 		flags |= LOOKUP_DIRECTORY;
 
 	ret = find_inode(path, &nd, flags);
@@ -632,11 +650,13 @@ asmlinkage long sys_inotify_add_watch(int fd, const char __user *path, u32 mask)
 
 	/* inode held in place by reference to nd; dev by fget on fd */
 	inode = nd.dentry->d_inode;
+	//获取struct inotify_device *
 	dev = filp->private_data;
 
 	mutex_lock(&dev->up_mutex);
 	ret = inotify_find_update_watch(dev->ih, inode, mask);
 	if (ret == -ENOENT)
+		//如果inode中没有欲添加的watch,将这个watch添加到inode链表中去
 		ret = create_watch(dev, inode, mask);
 	mutex_unlock(&dev->up_mutex);
 
@@ -703,7 +723,9 @@ static int __init inotify_user_setup(void)
 		panic("inotify: kern_mount ret %ld!\n", PTR_ERR(inotify_mnt));
 
 	inotify_max_queued_events = 16384;
+	//一个用户最多监视128个文件
 	inotify_max_user_instances = 128;
+	//一个用户最多的watch
 	inotify_max_user_watches = 8192;
 
 	watch_cachep = kmem_cache_create("inotify_watch_cache",

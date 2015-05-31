@@ -641,7 +641,13 @@ struct inode {
 #endif
 
 #ifdef CONFIG_INOTIFY
+	/* 
+	 * 链表头,链表成员是struct inotify_watch的i_list.
+	 * 每当用户调用 inotify_add_watch()时,内核就为添加的watch创建一个inotify_watch结构,
+	 * 并把它插入到被监视目标对应的inode的inotify_watches链表.
+	 */
 	struct list_head	inotify_watches; /* watches on this inode */
+	//用于同步对inotify_watches链表的访问
 	struct mutex		inotify_mutex;	/* protects the watches list */
 #endif
 	//inode的状态标志,比如I_NEW

@@ -1403,6 +1403,7 @@ static void switch_names(struct dentry *dentry, struct dentry *target)
  * dcache entries should not be moved in this way.
  */
 
+//交换dentry和target中的数据及各自位置
 void d_move(struct dentry * dentry, struct dentry * target)
 {
 	struct hlist_head *list;
@@ -1430,12 +1431,16 @@ void d_move(struct dentry * dentry, struct dentry * target)
 	hlist_del_rcu(&dentry->d_hash);
 
 already_unhashed:
+	//找到target在hlist中的链表头
 	list = d_hash(target->d_parent, target->d_name.hash);
+	//将dentry加入所在的target链表中
 	__d_rehash(dentry, list);
 
 	/* Unhash the target: dput() will then get rid of it */
+	//将target从hlist中取下来
 	__d_drop(target);
 
+	//将dentry和target从各自的父dentry链表中取出来
 	list_del(&dentry->d_u.d_child);
 	list_del(&target->d_u.d_child);
 

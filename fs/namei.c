@@ -2641,6 +2641,7 @@ static int do_rename(int olddfd, const char *oldname,
 	struct dentry * old_dir, * new_dir;
 	struct dentry * old_dentry, *new_dentry;
 	struct dentry * trap;
+	//oldnd记录oldname的父dentry,newnd记录newname的父dentry,
 	struct nameidata oldnd, newnd;
 
 	error = do_path_lookup(olddfd, oldname, LOOKUP_PARENT, &oldnd);
@@ -2666,16 +2667,19 @@ static int do_rename(int olddfd, const char *oldname,
 
 	trap = lock_rename(new_dir, old_dir);
 
+	//获取到oldname的dentry
 	old_dentry = lookup_hash(&oldnd);
 	error = PTR_ERR(old_dentry);
 	if (IS_ERR(old_dentry))
 		goto exit3;
 	/* source must exist */
 	error = -ENOENT;
+	//获取到oldname的inode一定要存在
 	if (!old_dentry->d_inode)
 		goto exit4;
 	/* unless the source is a directory trailing slashes give -ENOTDIR */
 	if (!S_ISDIR(old_dentry->d_inode->i_mode)) {
+		//oldname不是一个目录,oldnd.last.name/newnd.last.name最后一个字节一定为NULL
 		error = -ENOTDIR;
 		if (oldnd.last.name[oldnd.last.len])
 			goto exit4;
@@ -2686,6 +2690,7 @@ static int do_rename(int olddfd, const char *oldname,
 	error = -EINVAL;
 	if (old_dentry == trap)
 		goto exit4;
+	//获取到newname的dentry
 	new_dentry = lookup_hash(&newnd);
 	error = PTR_ERR(new_dentry);
 	if (IS_ERR(new_dentry))

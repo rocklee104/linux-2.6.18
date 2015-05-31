@@ -16,9 +16,11 @@
  * such as IN_CREATE, IN_DELETE, IN_OPEN, IN_CLOSE, ..., relative to the wd.
  */
 struct inotify_event {
+	//监视目标watch的描述符
 	__s32		wd;		/* watch descriptor */
 	__u32		mask;		/* watch mask */
 	__u32		cookie;		/* cookie to synchronize two events */
+	//下面name这个成员的长度
 	__u32		len;		/* length (including nulls) of name */
 	char		name[0];	/* stub for possible name */
 };
@@ -80,11 +82,14 @@ struct inotify_event {
  * implementation.
  */
 struct inotify_watch {
+	//链表成员,链表头是inotify_handle的watches
 	struct list_head	h_list;	/* entry in inotify_handle's list */
+	//链表成员,链表头是inode的inotify_watches
 	struct list_head	i_list;	/* entry in inode's list */
 	atomic_t		count;	/* reference count */
 	struct inotify_handle	*ih;	/* associated inotify handle */
 	struct inode		*inode;	/* associated inode */
+	//inotify_watch描述符
 	__s32			wd;	/* watch descriptor */
 	__u32			mask;	/* event mask for this watch */
 };

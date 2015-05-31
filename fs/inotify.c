@@ -74,10 +74,14 @@ static atomic_t inotify_cookie;
  * This structure is protected by the mutex 'mutex'.
  */
 struct inotify_handle {
+	//用于把watch描述符映射到对应的 inotify_watch
 	struct idr		idr;		/* idr mapping wd -> watch */
 	struct mutex		mutex;		/* protects this bad boy */
+	//用于监视事件的链表,链表成员,链表头是inode->inotify_watches
 	struct list_head	watches;	/* list of watches */
+	//引用计数
 	atomic_t		count;		/* reference count */
+	//上次分配的 watch 描述符
 	u32			last_wd;	/* the last wd allocated */
 	const struct inotify_operations *in_ops; /* inotify caller operations */
 };
@@ -136,10 +140,12 @@ static int inotify_handle_get_wd(struct inotify_handle *ih,
 	do {
 		if (unlikely(!idr_pre_get(&ih->idr, GFP_KERNEL)))
 			return -ENOSPC;
+		//可以通过ih->idr及watch->wd找到inotify_watch
 		ret = idr_get_new_above(&ih->idr, watch, ih->last_wd+1, &watch->wd);
 	} while (ret == -EAGAIN);
 
 	if (likely(!ret))
+		//记录handler中最后一个watch描述符
 		ih->last_wd = watch->wd;
 
 	return ret;
@@ -288,6 +294,7 @@ void inotify_inode_queue_event(struct inode *inode, u32 mask, u32 cookie,
 	struct inotify_watch *watch, *next;
 
 	if (!inotify_inode_watched(inode))
+		//inode没有被监视
 		return;
 
 	mutex_lock(&inode->inotify_mutex);
@@ -579,9 +586,11 @@ s32 inotify_find_update_watch(struct inotify_handle *ih, struct inode *inode,
 	int ret;
 
 	if (mask & IN_MASK_ADD)
+		//添加一个监视类型
 		mask_add = 1;
 
 	/* don't allow invalid bits: we don't want flags set */
+	//检查mask是否合法
 	mask &= IN_ALL_EVENTS | IN_ONESHOT;
 	if (unlikely(!mask))
 		return -EINVAL;
@@ -593,6 +602,7 @@ s32 inotify_find_update_watch(struct inotify_handle *ih, struct inode *inode,
 	 * Handle the case of re-adding a watch on an (inode,ih) pair that we
 	 * are already watching.  We just update the mask and return its wd.
 	 */
+	//检查inode->inotify_watches中是否已经存在监视对象
 	old = inode_find_handle(inode, ih);
 	if (unlikely(!old)) {
 		ret = -ENOENT;
@@ -600,6 +610,7 @@ s32 inotify_find_update_watch(struct inotify_handle *ih, struct inode *inode,
 	}
 
 	if (mask_add)
+		//监视事件需要添加一个类型
 		old->mask |= mask;
 	else
 		old->mask = mask;
@@ -637,6 +648,7 @@ s32 inotify_add_watch(struct inotify_handle *ih, struct inotify_watch *watch,
 	mutex_lock(&ih->mutex);
 
 	/* Initialize a new watch */
+	//将watch挂到ih下
 	ret = inotify_handle_get_wd(ih, watch);
 	if (unlikely(ret))
 		goto out;
@@ -653,10 +665,13 @@ s32 inotify_add_watch(struct inotify_handle *ih, struct inotify_watch *watch,
 	watch->inode = igrab(inode);
 
 	if (!inotify_inode_watched(inode))
+		//inode没有被监视
 		set_dentry_child_flags(inode, 1);
 
 	/* Add the watch to the handle's and the inode's list */
+	//将struct inotify_watch加入struct struct inotify_hanlder
 	list_add(&watch->h_list, &ih->watches);
+	//将struct inotify_watch加入inode
 	list_add(&watch->i_list, &inode->inotify_watches);
 out:
 	mutex_unlock(&ih->mutex);

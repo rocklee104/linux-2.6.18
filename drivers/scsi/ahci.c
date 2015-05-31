@@ -317,6 +317,8 @@ static const struct pci_device_id ahci_pci_tbl[] = {
 	  board_ahci }, /* ICH8M */
 	{ PCI_VENDOR_ID_INTEL, 0x282a, PCI_ANY_ID, PCI_ANY_ID, 0, 0,
 	  board_ahci }, /* ICH8M */
+	{ PCI_VENDOR_ID_INTEL, 0x3b22, PCI_ANY_ID, PCI_ANY_ID, 0, 0,
+	  board_ahci }, 
 
 	/* JMicron */
 	{ 0x197b, 0x2360, PCI_ANY_ID, PCI_ANY_ID, 0, 0,

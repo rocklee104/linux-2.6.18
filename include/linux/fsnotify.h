@@ -46,20 +46,24 @@ static inline void fsnotify_move(struct inode *old_dir, struct inode *new_dir,
 	u32 cookie = inotify_get_cookie();
 
 	if (old_dir == new_dir)
+		//同一目录下,rename
 		inode_dir_notify(old_dir, DN_RENAME);
 	else {
+		//不同目录下,需要删除旧文件,然后再创建新文件
 		inode_dir_notify(old_dir, DN_DELETE);
 		inode_dir_notify(new_dir, DN_CREATE);
 	}
 
 	if (isdir)
 		isdir = IN_ISDIR;
+	//产生move_from和move_to事件
 	inotify_inode_queue_event(old_dir, IN_MOVED_FROM|isdir,cookie,old_name,
 				  source);
 	inotify_inode_queue_event(new_dir, IN_MOVED_TO|isdir, cookie, new_name,
 				  source);
 
 	if (target) {
+		//如果target存在,需要先删除旧的target
 		inotify_inode_queue_event(target, IN_DELETE_SELF, 0, NULL, NULL);
 		inotify_inode_is_dead(target);
 	}

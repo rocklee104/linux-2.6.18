@@ -89,6 +89,7 @@ int idr_pre_get(struct idr *idp, gfp_t gfp_mask)
 		new = kmem_cache_alloc(idr_layer_cache, gfp_mask);
 		if (new == NULL)
 			return (0);
+		//将新分配的layer加入到预分配空间
 		free_layer(idp, new);
 	}
 	return 1;

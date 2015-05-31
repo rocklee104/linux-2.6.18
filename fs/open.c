@@ -1132,6 +1132,7 @@ long do_sys_open(int dfd, const char __user *filename, int flags, int mode)
 				put_unused_fd(fd);
 				fd = PTR_ERR(f);
 			} else {
+				//报告open事件给inotify系统
 				fsnotify_open(f->f_dentry);
 				fd_install(fd, f);
 			}
