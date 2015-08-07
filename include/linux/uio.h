@@ -1,4 +1,4 @@
-#ifndef __LINUX_UIO_H
+﻿#ifndef __LINUX_UIO_H
 #define __LINUX_UIO_H
 
 #include <linux/compiler.h>
@@ -19,7 +19,9 @@
 
 struct iovec
 {
+	//用户缓冲区
 	void __user *iov_base;	/* BSD uses caddr_t (1003.1g requires void *) */
+	//缓冲区大小
 	__kernel_size_t iov_len; /* Must be size_t (1003.1g) */
 };
 
